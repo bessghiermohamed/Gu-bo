@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>بوابة الأساتذة والإدارة | Talib Admin Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+  
+  <style>
+    :root {
+      --primary: #1E293B;
+      --accent: #2563EB;
+      --accent-hover: #1D4ED8;
+      --success: #10B981;
+      --warning: #F59E0B;
+      --danger: #EF4444;
+      --bg: #F1F5F9;
+      --card-bg: #FFFFFF;
+      --text: #0F172A;
+      --muted: #64748B;
+      --border: #E2E8F0;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Cairo', sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* Sidebar Navigation */
+    .sidebar {
+      width: 260px;
+      background-color: #0F172A;
+      color: #F8FAFC;
+      padding: 24px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      flex-shrink: 0;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #334155;
+    }
+
+    .brand-icon {
+      width: 44px;
+      height: 44px;
+      background: var(--accent);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+    }
+
+    .nav-links {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      list-style: none;
+      flex: 1;
+    }
+
+    .nav-btn {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      border-radius: 12px;
+      color: #94A3B8;
+      text-decoration: none;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.9rem;
+      border: none;
+      background: transparent;
+      width: 100%;
+      text-align: right;
+      transition: all 0.2s;
+    }
+
+    .nav-btn:hover, .nav-btn.active {
+      background-color: #1E293B;
+      color: #FFFFFF;
+    }
+
+    .nav-btn.active {
+      border-right: 4px solid var(--accent);
+    }
+
+    /* Main Panel Container */
+    .main-wrapper {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+
+    .top-header {
+      background: var(--card-bg);
+      padding: 16px 28px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .user-profile {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .avatar {
+      width: 42px;
+      height: 42px;
+      background: var(--accent);
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+    }
+
+    .content-body {
+      padding: 28px;
+      max-width: 1200px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 18px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: var(--card-bg);
+      border-radius: 18px;
+      padding: 20px;
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+
+    .stat-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+    }
+
+    .stat-info h4 {
+      font-size: 0.85rem;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .stat-info h2 {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: var(--text);
+    }
+
+    .panel-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 24px;
+    }
+
+    @media (max-width: 900px) {
+      body { flex-direction: column; }
+      .sidebar { width: 100%; }
+      .panel-grid { grid-template-columns: 1fr; }
+    }
+
+    .panel-card {
+      background: var(--card-bg);
+      border-radius: 20px;
+      padding: 24px;
+      border: 1px solid var(--border);
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+      margin-bottom: 24px;
+    }
+
+    .panel-card h3 {
+      font-size: 1.15rem;
+      font-weight: 800;
+      margin-bottom: 18px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+      color: var(--text);
+    }
+
+    .form-control {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .form-control:focus {
+      border-color: var(--accent);
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      font-size: 0.95rem;
+      transition: background 0.2s;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-hover);
+    }
+
+    .table-responsive {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: right;
+    }
+
+    th {
+      background: #F8FAFC;
+      padding: 12px 14px;
+      font-size: 0.8rem;
+      color: var(--muted);
+      font-weight: 700;
+      border-bottom: 1px solid var(--border);
+    }
+
+    td {
+      padding: 14px;
+      font-size: 0.85rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+
+    .badge-urgent { background: #FEE2E2; color: #DC2626; }
+    .badge-normal { background: #DBEAFE; color: #1D4ED8; }
+  </style>
+</head>
+<body>
+
+  <!-- Left Sidebar (Separated Portal) -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-icon"><i class="fa-solid fa-user-shield"></i></div>
+      <div>
+        <h3 style="font-weight: 900; font-size: 1.1rem;">لوحة الإدارة</h3>
+        <p style="font-size: 0.75rem; color: #94A3B8;">بوابة الأساتذة والمشرفين</p>
+      </div>
+    </div>
+
+    <ul class="nav-links">
+      <li><button class="nav-btn active"><i class="fa-solid fa-cloud-arrow-up"></i> رفع المحاضرات وPDF</button></li>
+      <li><button class="nav-btn"><i class="fa-solid fa-bullhorn"></i> نشر الإعلانات</button></li>
+      <li><button class="nav-btn"><i class="fa-solid fa-book"></i> إدارة المقاييس</button></li>
+      <li><button class="nav-btn"><i class="fa-solid fa-user-graduate"></i> كشف علامات الطلاب</button></li>
+      <li><button class="nav-btn"><i class="fa-solid fa-gear"></i> إعدادات القسم</button></li>
+    </ul>
+
+    <div style="padding-top: 14px; border-top: 1px solid #334155; display: flex; flex-direction: column; gap: 8px;">
+      <button onclick="downloadProjectZip()" style="background: rgba(16, 185, 129, 0.15); color: #10B981; border: 1px solid #10B981; border-radius: 10px; padding: 8px 12px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 0.8rem;">
+        <i class="fa-solid fa-file-zipper"></i>
+        <span>تحميل المشروع ZIP</span>
+      </button>
+      <a href="talib_app.html" style="color: #38BDF8; text-decoration: none; font-size: 0.85rem; display: flex; align-items: center; gap: 8px;">
+        <i class="fa-solid fa-mobile-screen"></i>
+        <span>الانتقال لتطبيق الطالب</span>
+      </a>
+    </div>
+  </aside>
+
+  <!-- Main Content Wrapper -->
+  <div class="main-wrapper">
+    
+    <!-- Top Header -->
+    <header class="top-header">
+      <div>
+        <h2 style="font-size: 1.3rem; font-weight: 800;">بوابة التحكم الأكاديمي المستقلة</h2>
+        <p style="font-size: 0.8rem; color: var(--muted);">قسم اللغة والأدب العربي • السنة الجامعية 2026</p>
+      </div>
+
+      <div class="user-profile">
+        <div style="text-align: left;">
+          <h4 style="font-size: 0.9rem; font-weight: 800;">أ.د. بلقاسم المنصوري</h4>
+          <span style="font-size: 0.75rem; color: var(--muted);">أستاذ محاضر ومسؤول المقياس</span>
+        </div>
+        <div class="avatar">ب</div>
+      </div>
+    </header>
+
+    <!-- Dashboard Body -->
+    <main class="content-body">
+      
+      <!-- Stats Row -->
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-icon" style="background: #EFF6FF; color: #2563EB;"><i class="fa-solid fa-book-open"></i></div>
+          <div class="stat-info">
+            <h4>المقاييس المسجلة</h4>
+            <h2>7 مقاييس</h2>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon" style="background: #ECFDF5; color: #10B981;"><i class="fa-solid fa-file-pdf"></i></div>
+          <div class="stat-info">
+            <h4>المحاضرات المنشورة</h4>
+            <h2>24 درساً</h2>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon" style="background: #FEF3C7; color: #D97706;"><i class="fa-solid fa-users"></i></div>
+          <div class="stat-info">
+            <h4>إجمالي الطلبة</h4>
+            <h2>148 طالباً</h2>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon" style="background: #FDF2F8; color: #DB2777;"><i class="fa-solid fa-bullhorn"></i></div>
+          <div class="stat-info">
+            <h4>الإعلانات النشطة</h4>
+            <h2>3 تنبيهات</h2>
+          </div>
+        </div>
+      </div>
+
+      <!-- Control Panels -->
+      <div class="panel-grid">
+        
+        <!-- Left: Upload & Publish Lecture -->
+        <div class="panel-card">
+          <h3><i class="fa-solid fa-upload" style="color: var(--accent);"></i> رفع وتعيين محاضرة جديدة للطلبة</h3>
+          
+          <form id="lectureForm" onsubmit="handleUpload(event)">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+              <div class="form-group">
+                <label>المقياس الدراسي</label>
+                <select class="form-control" required>
+                  <option>النحو والصرف العربي (ARA-201)</option>
+                  <option>الأدب العربي القديم (ARA-202)</option>
+                  <option>البلاغة والبيان (ARA-203)</option>
+                  <option>علم العروض والقافية (ARA-204)</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>رقم الأسبوع</label>
+                <input type="number" class="form-control" value="5" min="1" max="15" required>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>عنوان المحاضرة</label>
+              <input type="text" class="form-control" placeholder="مثال: أحكام المبتدأ والخبر ونواسخهما" required>
+            </div>
+
+            <div class="form-group">
+              <label>محاور وملخص الدرس</label>
+              <textarea class="form-control" rows="3" placeholder="أدخل النقاط الأساسية والشواهد التي سيتناولها الطالب..."></textarea>
+            </div>
+
+            <div class="form-group">
+              <label>ملف المحاضرة (صيغة PDF)</label>
+              <input type="file" class="form-control" accept=".pdf">
+            </div>
+
+            <button type="submit" class="btn-primary">
+              <i class="fa-solid fa-cloud-arrow-up"></i>
+              <span>نشر المحاضرة لتطبيق الطلاب فوراً</span>
+            </button>
+          </form>
+        </div>
+
+        <!-- Right: Fast Announcement Board -->
+        <div class="panel-card">
+          <h3><i class="fa-solid fa-bullhorn" style="color: #D97706;"></i> بث إعلان للدفعة</h3>
+          
+          <form onsubmit="handleAlert(event)">
+            <div class="form-group">
+              <label>درجة الأهمية</label>
+              <select class="form-control">
+                <option>هام وعاجل</option>
+                <option>إعلان عام</option>
+                <option>تغيير قاعة أو توقيت</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>عنوان التنبيه</label>
+              <input type="text" class="form-control" placeholder="مثال: تعويض حصة الأعمال الموجهة" required>
+            </div>
+
+            <div class="form-group">
+              <label>نص الإعلان</label>
+              <textarea class="form-control" rows="4" placeholder="اكتب نص الإعلان الموجه للطلبة..." required></textarea>
+            </div>
+
+            <button type="submit" class="btn-primary" style="background: #D97706;">
+              <i class="fa-solid fa-paper-plane"></i>
+              <span>إرسال وتثبيت الإعلان</span>
+            </button>
+          </form>
+        </div>
+
+      </div>
+
+      <!-- Published Lectures Table -->
+      <div class="panel-card">
+        <h3><i class="fa-solid fa-list-check" style="color: var(--accent);"></i> قائمة المحاضرات المنشورة حالياً</h3>
+        
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>المقياس</th>
+                <th>الأسبوع</th>
+                <th>عنوان المحاضرة</th>
+                <th>اسم ملف PDF</th>
+                <th>تاريخ النشر</th>
+                <th>الحالة</th>
+                <th>الإجراء</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>النحو والصرف</strong></td>
+                <td>الأسبوع 04</td>
+                <td>الإعراب التقديري ومواضع التعذر</td>
+                <td><code>lecture_nahw_w4.pdf</code></td>
+                <td>2026/08/25</td>
+                <td><span class="badge badge-normal">منشور للطلبة</span></td>
+                <td><button style="border:none; background:none; color: #EF4444; cursor:pointer;"><i class="fa-solid fa-trash"></i></button></td>
+              </tr>
+              <tr>
+                <td><strong>الأدب القديم</strong></td>
+                <td>الأسبوع 03</td>
+                <td>المعلقات وشعر العصر الجاهلي</td>
+                <td><code>adab_jahili_w3.pdf</code></td>
+                <td>2026/08/20</td>
+                <td><span class="badge badge-normal">منشور للطلبة</span></td>
+                <td><button style="border:none; background:none; color: #EF4444; cursor:pointer;"><i class="fa-solid fa-trash"></i></button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <script>
+    function handleUpload(e) {
+      e.preventDefault();
+      alert('✓ تم رفع ونشر المحاضرة بنجاح!\nأصبحت متاحة للطلاب في شاشة "المحاضرات و PDF" داخل التطبيق.');
+      e.target.reset();
+    }
+
+    function handleAlert(e) {
+      e.preventDefault();
+      alert('✓ تم نشر الإعلان على لوحة التنبيهات العامة للطلبة بنجاح!');
+      e.target.reset();
+    }
+
+    async function downloadProjectZip() {
+      try {
+        if (typeof JSZip === 'undefined') {
+          alert('جاري تحميل مكتبة الضغط...');
+          return;
+        }
+        const zip = new JSZip();
+        
+        // Add HTML Portals
+        zip.file("talib_admin_hub.html", document.documentElement.outerHTML);
+        
+        // Add Readme
+        zip.file("README_AR.txt", "مشروع بوابة الإدارة والأساتذة | Talib Admin Hub\n" +
+          "يتضمن لوحة تحكم الأساتذة والمشرفين لرفع المحاضرات وإدارة المقاييس وبث التنبيهات.\n" +
+          "لتشغيل لوحة الإدارة: افتح ملف talib_admin_hub.html في أي متصفح.");
+
+        const blob = await zip.generateAsync({ type: "blob" });
+        saveAs(blob, "talib_admin_project.zip");
+      } catch (err) {
+        console.error(err);
+        alert('يمكنك أيضاً تنزيل الأرشيف من قائمة الإعدادات العلوية: Export -> Download as ZIP');
+      }
+    }
+  </script>
+</body>
+</html>

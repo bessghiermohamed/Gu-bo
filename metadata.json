@@ -1,0 +1,6 @@
+{
+  "name": "طالب | Talib",
+  "description": "رفيقك الأكاديمي الشامل للطلاب - المقررات والمحاضرات والامتحانات والجدول والعلامات والإعلانات",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

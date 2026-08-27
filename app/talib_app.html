@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>طالب | Talib - رفيقك الأكاديمي الجامعي</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800;900&family=Fira+Code:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+  
+  <style>
+    :root {
+      /* Theme Light (Purple Palette) */
+      --primary-color: #6D28D9;
+      --primary-dark: #4C1D95;
+      --primary-light: #8B5CF6;
+      --bg-color: #F8FAFC;
+      --surface-color: #FFFFFF;
+      --surface-variant: #F1F5F9;
+      --text-main: #0F172A;
+      --text-muted: #64748B;
+      --border-color: #E2E8F0;
+      --card-shadow: 0 10px 25px -5px rgba(109, 40, 217, 0.15), 0 8px 10px -6px rgba(109, 40, 217, 0.1);
+      --gradient-card: linear-gradient(135deg, #6D28D9 0%, #4C1D95 100%);
+    }
+
+    [data-theme="dark"] {
+      /* Theme Dark (Crimson Palette) */
+      --primary-color: #E11D48;
+      --primary-dark: #9F1239;
+      --primary-light: #F43F5E;
+      --bg-color: #0F172A;
+      --surface-color: #1E293B;
+      --surface-variant: #334155;
+      --text-main: #F8FAFC;
+      --text-muted: #94A3B8;
+      --border-color: #334155;
+      --card-shadow: 0 10px 25px -5px rgba(225, 29, 72, 0.25), 0 8px 10px -6px rgba(225, 29, 72, 0.2);
+      --gradient-card: linear-gradient(135deg, #E11D48 0%, #9F1239 100%);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Cairo', sans-serif;
+      transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 20px 10px;
+    }
+
+    .app-container {
+      width: 100%;
+      max-width: 460px;
+      background-color: var(--surface-color);
+      border-radius: 36px;
+      overflow: hidden;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+      border: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      height: 92vh;
+      position: relative;
+    }
+
+    /* Top Bar */
+    .top-bar {
+      padding: 16px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background-color: var(--surface-color);
+      border-bottom: 1px solid var(--border-color);
+      z-index: 10;
+    }
+
+    .brand-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .brand-title h1 {
+      font-size: 1.25rem;
+      font-weight: 900;
+      color: var(--primary-color);
+    }
+
+    .brand-title p {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: none;
+      background: var(--surface-variant);
+      color: var(--primary-color);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 1.1rem;
+      transition: transform 0.2s;
+    }
+
+    .btn-icon:hover {
+      transform: scale(1.08);
+    }
+
+    .btn-admin-badge {
+      background: var(--surface-variant);
+      color: var(--primary-color);
+      border: none;
+      padding: 6px 12px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+    }
+
+    /* Content Area */
+    .screen-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      padding-bottom: 90px;
+    }
+
+    /* Hero Banner */
+    .hero-card {
+      background: var(--gradient-card);
+      color: #ffffff;
+      border-radius: 24px;
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: var(--card-shadow);
+      margin-bottom: 18px;
+    }
+
+    .hero-card::after {
+      content: '';
+      position: absolute;
+      width: 140px;
+      height: 140px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 50%;
+      bottom: -30px;
+      left: -30px;
+    }
+
+    .hero-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+
+    .hero-header h2 {
+      font-size: 1.2rem;
+      font-weight: 800;
+    }
+
+    .hero-header span {
+      font-size: 0.8rem;
+      opacity: 0.9;
+    }
+
+    .badge-group {
+      background: rgba(255, 255, 255, 0.2);
+      padding: 4px 10px;
+      border-radius: 10px;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+
+    .gpa-pill {
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(8px);
+      border-radius: 14px;
+      padding: 10px 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.8rem;
+    }
+
+    .gpa-val {
+      font-size: 1rem;
+      font-weight: 900;
+      color: #FBBF24;
+    }
+
+    /* Grid Section */
+    .section-title {
+      font-size: 1rem;
+      font-weight: 800;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .action-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .grid-btn {
+      background: var(--gradient-card);
+      color: white;
+      border-radius: 20px;
+      padding: 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border: none;
+      cursor: pointer;
+      box-shadow: var(--card-shadow);
+      animation: floatEffect 3s infinite ease-in-out alternate;
+      text-align: right;
+    }
+
+    .grid-btn:nth-child(even) {
+      animation-delay: 0.5s;
+    }
+
+    @keyframes floatEffect {
+      0% { transform: translateY(0px); }
+      100% { transform: translateY(-5px); }
+    }
+
+    .grid-btn-icon {
+      width: 42px;
+      height: 42px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      flex-shrink: 0;
+    }
+
+    .grid-btn-info h3 {
+      font-size: 0.9rem;
+      font-weight: 800;
+    }
+
+    .grid-btn-info p {
+      font-size: 0.7rem;
+      opacity: 0.85;
+      margin-top: 2px;
+    }
+
+    /* List Cards */
+    .card-item {
+      background: var(--surface-variant);
+      border-radius: 18px;
+      padding: 14px;
+      margin-bottom: 10px;
+      border: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .card-item-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .card-badge-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      background: rgba(109, 40, 217, 0.15);
+      color: var(--primary-color);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+    }
+
+    .card-item-left h4 {
+      font-size: 0.85rem;
+      font-weight: 700;
+    }
+
+    .card-item-left p {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .card-time {
+      font-size: 0.75rem;
+      font-weight: 800;
+      color: var(--primary-color);
+      background: var(--surface-color);
+      padding: 4px 8px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+    }
+
+    /* Bottom Nav Bar */
+    .bottom-nav {
+      position: absolute;
+      bottom: 12px;
+      left: 16px;
+      right: 16px;
+      background: var(--surface-color);
+      border: 1px solid var(--border-color);
+      border-radius: 24px;
+      padding: 8px 16px;
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+    }
+
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      color: var(--text-muted);
+      cursor: pointer;
+      background: none;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 16px;
+    }
+
+    .nav-item.active {
+      color: var(--primary-color);
+      font-weight: 800;
+    }
+
+    .nav-item.active .nav-icon-box {
+      background: rgba(109, 40, 217, 0.15);
+    }
+
+    [data-theme="dark"] .nav-item.active .nav-icon-box {
+      background: rgba(225, 29, 72, 0.2);
+    }
+
+    .nav-icon-box {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+    }
+
+    .nav-item span {
+      font-size: 0.7rem;
+    }
+
+    /* Modal Sheet for PDF */
+    .modal-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(4px);
+      display: none;
+      z-index: 50;
+      justify-content: flex-end;
+      flex-direction: column;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal-sheet {
+      background: var(--surface-color);
+      border-top-left-radius: 28px;
+      border-top-right-radius: 28px;
+      padding: 20px;
+      max-height: 80%;
+      overflow-y: auto;
+      box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.3);
+      animation: slideUp 0.3s ease-out;
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .modal-header h3 {
+      font-size: 1.1rem;
+      font-weight: 800;
+    }
+
+    .pdf-preview-box {
+      background: var(--surface-variant);
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 14px;
+      border: 1px dashed var(--primary-color);
+    }
+
+    .source-code-view {
+      background: #0F172A;
+      color: #38BDF8;
+      border-radius: 14px;
+      padding: 12px;
+      font-family: 'Fira Code', monospace;
+      font-size: 0.75rem;
+      direction: ltr;
+      text-align: left;
+      overflow-x: auto;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-container">
+    
+    <!-- Top Header -->
+    <header class="top-bar">
+      <div class="brand-title">
+        <div class="card-badge-icon" style="background: var(--primary-color); color: white;">
+          <i class="fa-solid fa-graduation-cap"></i>
+        </div>
+        <div>
+          <h1>طالب | Talib</h1>
+          <p id="screen-subtitle">رفيقك الأكاديمي الشامل</p>
+        </div>
+      </div>
+
+      <div class="top-actions">
+        <button class="btn-icon" title="تحميل المشروع كملف ZIP" onclick="downloadProjectZip()" style="background: rgba(16, 185, 129, 0.15); color: #10B981;">
+          <i class="fa-solid fa-file-zipper"></i>
+        </button>
+        <button class="btn-icon" id="theme-btn" onclick="toggleTheme()">
+          <i class="fa-solid fa-moon"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Screens Content -->
+    <main class="screen-content" id="main-content">
+      
+      <!-- 1. Hero Digital Student Card -->
+      <section class="hero-card">
+        <div class="hero-header">
+          <div>
+            <h2>مرحباً، محمد البشير</h2>
+            <span>الأدب العربي والدراسات اللغوية • L2</span>
+          </div>
+          <div class="badge-group">الفوج 03 (B)</div>
+        </div>
+
+        <div class="gpa-pill">
+          <div>
+            <i class="fa-solid fa-chart-line" style="color: #FBBF24; margin-left: 6px;"></i>
+            <span>المعدل الفصلي التقديري:</span>
+          </div>
+          <span class="gpa-val">15.40 / 20</span>
+        </div>
+      </section>
+
+      <!-- 2. The 8 Main Grid Action Modules -->
+      <section>
+        <div class="section-title">
+          <span>الخدمات والوحدات الأكاديمية</span>
+          <span style="font-size: 0.75rem; color: var(--primary-color); font-weight: 700;">8 بوابات</span>
+        </div>
+
+        <div class="action-grid">
+          <!-- Courses -->
+          <button class="grid-btn" onclick="openModule('المقررات الدراسية', 'استعراض 7 مقاييس مسجلة مع المعاملات والأرصدة')">
+            <div class="grid-btn-icon"><i class="fa-solid fa-book-open"></i></div>
+            <div class="grid-btn-info">
+              <h3>المقررات</h3>
+              <p>7 مقاييس</p>
+            </div>
+          </button>
+
+          <!-- Lectures & PDF -->
+          <button class="grid-btn" onclick="openPdfModal('محاضرة النحو العربي (الأسبوع 4)', 'lecture_nahw_week4.pdf')">
+            <div class="grid-btn-icon"><i class="fa-solid fa-file-pdf"></i></div>
+            <div class="grid-btn-info">
+              <h3>المحاضرات</h3>
+              <p>ملفات PDF</p>
+            </div>
+          </button>
+
+          <!-- Assignments -->
+          <button class="grid-btn" onclick="openModule('الواجبات والبحوث', '3 واجبات معلقة - آخر أجل: الخميس القادم')">
+            <div class="grid-btn-icon"><i class="fa-solid fa-pen-ruler"></i></div>
+            <div class="grid-btn-info">
+              <h3>الواجبات</h3>
+              <p>مهام دراسية</p>
+            </div>
+          </button>
+
+          <!-- Schedule -->
+          <button class="grid-btn" onclick="openModule('التوقيت الأسبوعي', 'برنامج الحصص والمدرجات من الأحد إلى الخميس')">
+            <div class="grid-btn-icon"><i class="fa-solid fa-calendar-days"></i></div>
+            <div class="grid-btn-info">
+              <h3>الجدول</h3>
+              <p>التوقيت</p>
+            </div>
+          </button>
+
+          <!-- Exams -->
+          <button class="grid-btn" onclick="openModule('جدول الامتحانات', 'رزنامة امتحانات السداسي الأول وقاعات الاختبار')">
+            <div class="grid-btn-icon"><i class="fa-solid fa-file-lines"></i></div>
+            <div class="grid-btn-info">
+              <h3>الامتحانات</h3>
+              <p>5 اختبارات</p>
+            </div>
+          </button>
+
+          <!-- Grades -->
+          <button class="grid-btn" onclick="openModule('كشف النقاط والمعدل', 'نقاط المراقبة المستمرة TD والامتحانات وحساب الأرصدة')">
+            <div class="grid-btn-icon"><i class="fa-solid fa-chart-pie"></i></div>
+            <div class="grid-btn-info">
+              <h3>العلامات</h3>
+              <p>حساب المعدل</p>
+            </div>
+          </button>
+
+          <!-- Cohort & Group -->
+          <button class="grid-btn" onclick="openModule('الفوج وأعضاء الدفعة', 'مندوب الفوج: أيمن حركات • 32 طالباً • قائمة الأساتذة')">
+            <div class="grid-btn-icon"><i class="fa-solid fa-users"></i></div>
+            <div class="grid-btn-info">
+              <h3>الفوج</h3>
+              <p>الفوج 03</p>
+            </div>
+          </button>
+
+          <!-- Announcements -->
+          <button class="grid-btn" onclick="openModule('لوحة الإعلانات', 'تنبيه عاجل: تأجيل حصة الصرف إلى يوم الثلاثاء القادم')">
+            <div class="grid-btn-icon"><i class="fa-solid fa-bullhorn"></i></div>
+            <div class="grid-btn-info">
+              <h3>الإعلانات</h3>
+              <p>3 تنبيهات</p>
+            </div>
+          </button>
+        </div>
+      </section>
+
+      <!-- 3. Upcoming Schedule Preview -->
+      <section>
+        <div class="section-title">
+          <span>الحصص القادمة اليوم</span>
+          <span style="font-size: 0.75rem; color: var(--text-muted);">الأحد 27 أوت</span>
+        </div>
+
+        <div class="card-item">
+          <div class="card-item-left">
+            <div class="card-badge-icon"><i class="fa-solid fa-landmark"></i></div>
+            <div>
+              <h4>النحو والصرف (محاضرة)</h4>
+              <p>المدرج 04 • د. بلقاسم المنصوري</p>
+            </div>
+          </div>
+          <div class="card-time">08:30 - 10:00</div>
+        </div>
+
+        <div class="card-item">
+          <div class="card-item-left">
+            <div class="card-badge-icon" style="background: rgba(16, 185, 129, 0.15); color: #10B981;"><i class="fa-solid fa-pencil"></i></div>
+            <div>
+              <h4>الأدب الجاهلي (أعمال موجهة TD)</h4>
+              <p>القاعة 12 • أ. سارة بن ناصر</p>
+            </div>
+          </div>
+          <div class="card-time">10:15 - 11:45</div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+      <button class="nav-item active" onclick="switchNav(this, 'الرئيسية')">
+        <div class="nav-icon-box"><i class="fa-solid fa-house"></i></div>
+        <span>الرئيسية</span>
+      </button>
+
+      <button class="nav-item" onclick="switchNav(this, 'المقررات')">
+        <div class="nav-icon-box"><i class="fa-solid fa-book"></i></div>
+        <span>المقررات</span>
+      </button>
+
+      <button class="nav-item" onclick="switchNav(this, 'الجدول')">
+        <div class="nav-icon-box"><i class="fa-solid fa-calendar"></i></div>
+        <span>الجدول</span>
+      </button>
+
+      <button class="nav-item" onclick="switchNav(this, 'حسابي')">
+        <div class="nav-icon-box"><i class="fa-solid fa-user"></i></div>
+        <span>حسابي</span>
+      </button>
+    </nav>
+
+    <!-- PDF Reader & Module Modal -->
+    <div class="modal-overlay" id="app-modal" onclick="closeModal(event)">
+      <div class="modal-sheet" onclick="event.stopPropagation()">
+        <div class="modal-header">
+          <h3 id="modal-title">معاينة الملف الرقمي</h3>
+          <button class="btn-icon" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <div class="pdf-preview-box">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+            <strong id="pdf-doc-name" style="color: var(--primary-color);">lecture_file.pdf</strong>
+            <span style="font-size: 0.75rem; background: var(--primary-color); color: white; padding: 2px 8px; border-radius: 6px;">جاهز للتحميل</span>
+          </div>
+          <p id="modal-desc" style="font-size: 0.85rem; line-height: 1.6; color: var(--text-main);">
+            محاور الدرس: مفهوم الإعراب التقديري، مواضع التعذر والاشتغال، شواهد نحوية تطبيقية.
+          </p>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-top: 14px;">
+          <button class="grid-btn" style="flex: 1; justify-content: center; animation: none;" onclick="alert('تم حفظ الملف في ذاكرة الهاتف للاستخدام بدون إنترنت!')">
+            <i class="fa-solid fa-download"></i>
+            <span>تحميل الـ PDF</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    let isDark = false;
+
+    function toggleTheme() {
+      isDark = !isDark;
+      const html = document.documentElement;
+      const themeBtn = document.getElementById('theme-btn');
+      
+      if (isDark) {
+        html.setAttribute('data-theme', 'dark');
+        themeBtn.innerHTML = '<i class="fa-solid fa-sun"></i>';
+      } else {
+        html.removeAttribute('data-theme');
+        themeBtn.innerHTML = '<i class="fa-solid fa-moon"></i>';
+      }
+    }
+
+    function toggleAdmin() {
+      alert("مرحباً بك في لوحة تحكم الأستاذ والإدارة!\nيمكنك من خلالها إضافة محاضرات جديدة، نشر ملفات PDF، وتعديل المقاييس والإعلانات.");
+    }
+
+    function openPdfModal(title, pdfName) {
+      document.getElementById('modal-title').innerText = title;
+      document.getElementById('pdf-doc-name').innerText = pdfName;
+      document.getElementById('modal-desc').innerText = "تم إرفاق هذا المستند الأكاديمي بواسطة أستاذ المقياس. يتضمن شروحات معمقة، مسائل لغوية، وتمارين للمراجعة الفردية.";
+      document.getElementById('app-modal').classList.add('active');
+    }
+
+    function openModule(name, details) {
+      document.getElementById('modal-title').innerText = name;
+      document.getElementById('pdf-doc-name').innerText = "تفاصيل الوحدة الأكاديمية";
+      document.getElementById('modal-desc').innerText = details;
+      document.getElementById('app-modal').classList.add('active');
+    }
+
+    function closeModal(e) {
+      document.getElementById('app-modal').classList.remove('active');
+    }
+
+    function switchNav(el, title) {
+      document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
+      el.classList.add('active');
+      document.getElementById('screen-subtitle').innerText = "قسم " + title;
+    }
+
+    async function downloadProjectZip() {
+      try {
+        if (typeof JSZip === 'undefined') {
+          alert('جاري تحميل مكتبة الضغط...');
+          return;
+        }
+        const zip = new JSZip();
+        
+        // Add HTML Portals
+        zip.file("talib_student_app.html", document.documentElement.outerHTML);
+        
+        // Add Readme
+        zip.file("README_AR.txt", "مشروع تطبيق طالب | Talib الأكاديمي الشامل\n" +
+          "يتضمن تطبيق الطالب، بوابة لوحة التحكم للأساتذة والإدارة، وقاعدة البيانات ونظام المحاضرات.\n" +
+          "لتشغيل تطبيق الطالب: افتح ملف talib_student_app.html في أي متصفح.");
+
+        const blob = await zip.generateAsync({ type: "blob" });
+        saveAs(blob, "talib_academic_project.zip");
+      } catch (err) {
+        console.error(err);
+        alert('يمكنك أيضاً تنزيل الأرشيف من قائمة الإعدادات العلوية: Export -> Download as ZIP');
+      }
+    }
+  </script>
+</body>
+</html>
