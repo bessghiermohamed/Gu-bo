@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -217,7 +218,7 @@ fun CoursesScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp)
           ) {
             Icon(
-              imageVector = Icons.Default.MenuBook,
+              imageVector = Icons.AutoMirrored.Filled.MenuBook,
               contentDescription = null,
               tint = MaterialTheme.colorScheme.onSurfaceVariant,
               modifier = Modifier.size(48.dp)
@@ -238,8 +239,12 @@ fun CoursesScreen(
         ModuleCardItem(
           module = module,
           onOpenLectures = {
+            viewModel.recordModuleViewed(module)
             viewModel.selectModule(module)
             onNavigate(ScreenRoute.LECTURES)
+          },
+          onCacheOffline = {
+            viewModel.cacheCourseContentForOffline(module.id)
           }
         )
       }
@@ -250,7 +255,8 @@ fun CoursesScreen(
 @Composable
 fun ModuleCardItem(
   module: ModuleCourse,
-  onOpenLectures: () -> Unit
+  onOpenLectures: () -> Unit,
+  onCacheOffline: () -> Unit = {}
 ) {
   Card(
     shape = RoundedCornerShape(20.dp),
@@ -271,22 +277,56 @@ fun ModuleCardItem(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
       ) {
-        Box(
-          modifier = Modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(
-              when (module.category) {
-                "أساسي" -> MaterialTheme.colorScheme.primary
-                "منهجي" -> Color(0xFF10B981)
-                else -> Color(0xFFF59E0B)
-              }
-            )
-            .padding(horizontal = 8.dp, vertical = 3.dp)
+        Row(
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-          Text(
-            text = "وحدة ${module.category}",
-            style = MaterialTheme.typography.labelSmall.copy(color = Color.White, fontWeight = FontWeight.Bold)
-          )
+          Box(
+            modifier = Modifier
+              .clip(RoundedCornerShape(8.dp))
+              .background(
+                when (module.category) {
+                  "أساسي" -> MaterialTheme.colorScheme.primary
+                  "منهجي" -> Color(0xFF10B981)
+                  else -> Color(0xFFF59E0B)
+                }
+              )
+              .padding(horizontal = 8.dp, vertical = 3.dp)
+          ) {
+            Text(
+              text = "وحدة ${module.category}",
+              style = MaterialTheme.typography.labelSmall.copy(color = Color.White, fontWeight = FontWeight.Bold)
+            )
+          }
+
+          if (module.isCachedOffline || module.lastViewedTimestamp > 0) {
+            Box(
+              modifier = Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color(0xFF10B981).copy(alpha = 0.15f))
+                .padding(horizontal = 6.dp, vertical = 3.dp)
+            ) {
+              Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(3.dp)
+              ) {
+                Icon(
+                  imageVector = Icons.Default.OfflinePin,
+                  contentDescription = null,
+                  tint = Color(0xFF10B981),
+                  modifier = Modifier.size(12.dp)
+                )
+                Text(
+                  text = "مخزن محلياً",
+                  style = MaterialTheme.typography.labelSmall.copy(
+                    color = Color(0xFF10B981),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 10.sp
+                  )
+                )
+              }
+            }
+          }
         }
 
         Text(
@@ -349,22 +389,38 @@ fun ModuleCardItem(
         }
       }
 
-      Button(
-        onClick = onOpenLectures,
-        shape = RoundedCornerShape(12.dp),
+      Row(
         modifier = Modifier.fillMaxWidth(),
-        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
       ) {
-        Icon(
-          imageVector = Icons.Default.Description,
-          contentDescription = null,
-          modifier = Modifier.size(18.dp)
-        )
-        Spacer(modifier = Modifier.width(6.dp))
-        Text(
-          text = "استعراض المحاضرات وملفات PDF",
-          style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
-        )
+        Button(
+          onClick = onOpenLectures,
+          shape = RoundedCornerShape(12.dp),
+          modifier = Modifier.weight(1f),
+          colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+        ) {
+          Icon(
+            imageVector = Icons.Default.Description,
+            contentDescription = null,
+            modifier = Modifier.size(18.dp)
+          )
+          Spacer(modifier = Modifier.width(6.dp))
+          Text(
+            text = "المحاضرات وملفات PDF",
+            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
+          )
+        }
+
+        OutlinedIconButton(
+          onClick = onCacheOffline,
+          shape = RoundedCornerShape(12.dp)
+        ) {
+          Icon(
+            imageVector = Icons.Default.DownloadForOffline,
+            contentDescription = "حفظ في الذاكرة المحلية (Room DB)",
+            tint = MaterialTheme.colorScheme.primary
+          )
+        }
       }
     }
   }

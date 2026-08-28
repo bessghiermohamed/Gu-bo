@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -29,9 +30,11 @@ fun ProfileScreen(
 ) {
   val profile by viewModel.studentProfile.collectAsStateWithLifecycle()
   val isDarkMode by viewModel.isDarkMode.collectAsStateWithLifecycle()
+  val isAcademicTheme by viewModel.isAcademicTheme.collectAsStateWithLifecycle()
   val gpa by viewModel.calculatedGPA.collectAsStateWithLifecycle()
 
   var showEditProfileDialog by remember { mutableStateOf(false) }
+  var showAcademicPathDialog by remember { mutableStateOf(false) }
   var showAdminPinDialog by remember { mutableStateOf(false) }
   var adminPinInput by remember { mutableStateOf("") }
   var adminPinError by remember { mutableStateOf(false) }
@@ -110,6 +113,84 @@ fun ProfileScreen(
     )
   }
 
+  // Academic Path Dialog (المسار الأكاديمي: مؤسسة ← تخصص ← ملمح ← سنة ← سداسي)
+  if (showAcademicPathDialog && profile != null) {
+    var institutionText by remember { mutableStateOf(profile?.institution ?: "المدرسة العليا للأساتذة - بوزريعة") }
+    var trackText by remember { mutableStateOf(profile?.profileTrack ?: "أستاذ التعليم الابتدائي") }
+    var yearText by remember { mutableStateOf(profile?.academicYearName ?: "السنة الثانية") }
+    var semText by remember { mutableStateOf(profile?.semesterName ?: "السداسي الأول") }
+    var groupText by remember { mutableStateOf(profile?.groupNumber ?: "الفوج 03") }
+
+    AlertDialog(
+      onDismissRequest = { showAcademicPathDialog = false },
+      title = { Text("تحديد المسار الأكاديمي", fontWeight = FontWeight.Bold) },
+      text = {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+          OutlinedTextField(
+            value = institutionText,
+            onValueChange = { institutionText = it },
+            label = { Text("المؤسسة الجامعية / المدرسة العليا") },
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier.fillMaxWidth()
+          )
+          OutlinedTextField(
+            value = trackText,
+            onValueChange = { trackText = it },
+            label = { Text("الملمح والتخصص (مثال: أستاذ التعليم الابتدائي)") },
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier.fillMaxWidth()
+          )
+          Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedTextField(
+              value = yearText,
+              onValueChange = { yearText = it },
+              label = { Text("السنة الدراسية") },
+              shape = RoundedCornerShape(12.dp),
+              modifier = Modifier.weight(1f)
+            )
+            OutlinedTextField(
+              value = semText,
+              onValueChange = { semText = it },
+              label = { Text("السداسي") },
+              shape = RoundedCornerShape(12.dp),
+              modifier = Modifier.weight(1f)
+            )
+          }
+          OutlinedTextField(
+            value = groupText,
+            onValueChange = { groupText = it },
+            label = { Text("الفوج المخصص") },
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier.fillMaxWidth()
+          )
+        }
+      },
+      confirmButton = {
+        Button(
+          onClick = {
+            viewModel.updateAcademicPath(
+              institution = institutionText,
+              specialtyName = "الأدب العربي",
+              profileTrack = trackText,
+              yearName = yearText,
+              semesterName = semText,
+              groupNumber = groupText
+            )
+            showAcademicPathDialog = false
+          },
+          shape = RoundedCornerShape(10.dp)
+        ) {
+          Text("تحديث المسار")
+        }
+      },
+      dismissButton = {
+        TextButton(onClick = { showAcademicPathDialog = false }) {
+          Text("إلغاء")
+        }
+      }
+    )
+  }
+
   // Edit Profile Dialog
   if (showEditProfileDialog && profile != null) {
     var nameText by remember { mutableStateOf(profile?.fullName ?: "") }
@@ -132,7 +213,7 @@ fun ProfileScreen(
           OutlinedTextField(
             value = uniText,
             onValueChange = { uniText = it },
-            label = { Text("الجامعة") },
+            label = { Text("الجامعة / الكلية") },
             shape = RoundedCornerShape(12.dp),
             modifier = Modifier.fillMaxWidth()
           )
@@ -208,7 +289,7 @@ fun ProfileScreen(
           ) {
             Column {
               Text(
-                text = "بطاقة الطالب الرقمية",
+                text = "بطاقة الطالب الرقمية • ${profile?.userRole ?: "طالب"}",
                 style = MaterialTheme.typography.labelSmall.copy(color = Color.White.copy(alpha = 0.8f))
               )
               Text(
@@ -229,7 +310,7 @@ fun ProfileScreen(
               contentAlignment = Alignment.Center
             ) {
               Icon(
-                imageVector = Icons.Default.Person,
+                imageVector = Icons.Default.School,
                 contentDescription = null,
                 tint = Color.White,
                 modifier = Modifier.size(30.dp)
@@ -245,11 +326,11 @@ fun ProfileScreen(
           ) {
             Column {
               Text(
-                text = "رقم التسجيل الجامعي",
+                text = "المسار والملمح الأكاديمي",
                 style = MaterialTheme.typography.labelSmall.copy(color = Color.White.copy(alpha = 0.7f))
               )
               Text(
-                text = profile?.studentId ?: "202631084592",
+                text = profile?.profileTrack ?: "أستاذ التعليم الابتدائي",
                 style = MaterialTheme.typography.labelMedium.copy(
                   color = Color.White,
                   fontWeight = FontWeight.Bold
@@ -273,14 +354,14 @@ fun ProfileScreen(
           }
 
           Text(
-            text = "${profile?.university ?: "جامعة الجزائر 1"} • ${profile?.faculty ?: "كلية الآداب"}",
+            text = "${profile?.institution ?: "المدرسة العليا للأساتذة - بوزريعة"} • ${profile?.faculty ?: "كلية الآداب"}",
             style = MaterialTheme.typography.bodySmall.copy(color = Color.White.copy(alpha = 0.9f))
           )
         }
       }
     }
 
-    // 2. Profile Actions
+    // 2. Profile & Visual Appearance Settings
     item {
       Card(
         shape = RoundedCornerShape(20.dp),
@@ -293,9 +374,25 @@ fun ProfileScreen(
           verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
           Text(
-            text = "إعدادات الحساب والمظهر",
+            text = "إعدادات المسار والمظهر الأكاديمي",
             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
           )
+
+          // Change Academic Track item
+          ListItem(
+            headlineContent = { Text("المسار الأكاديمي والمؤسسة", fontWeight = FontWeight.SemiBold) },
+            supportingContent = { Text("${profile?.institution ?: "المدرسة العليا للأساتذة"} • ${profile?.profileTrack ?: "ملمح ابتدائي"}") },
+            leadingContent = {
+              Icon(Icons.Default.AccountTree, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            },
+            trailingContent = {
+              IconButton(onClick = { showAcademicPathDialog = true }) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBackIos, contentDescription = null, modifier = Modifier.size(16.dp))
+              }
+            }
+          )
+
+          HorizontalDivider()
 
           // Edit Profile item
           ListItem(
@@ -306,8 +403,34 @@ fun ProfileScreen(
             },
             trailingContent = {
               IconButton(onClick = { showEditProfileDialog = true }) {
-                Icon(Icons.Default.ArrowBackIos, contentDescription = null, modifier = Modifier.size(16.dp))
+                Icon(Icons.AutoMirrored.Filled.ArrowBackIos, contentDescription = null, modifier = Modifier.size(16.dp))
               }
+            }
+          )
+
+          HorizontalDivider()
+
+          // Academic Palette Toggle (Emerald/Cream vs Modern Violet)
+          ListItem(
+            headlineContent = { Text("السمة البصرية الأكاديمية", fontWeight = FontWeight.SemiBold) },
+            supportingContent = {
+              Text(
+                if (isAcademicTheme) "السمة الأكاديمية الأصيلة (الزمردي/الورقي/البرونزي)"
+                else "السمة المعاصرة (البنفسجي/الأرجواني)"
+              )
+            },
+            leadingContent = {
+              Icon(
+                imageVector = Icons.Default.Palette,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary
+              )
+            },
+            trailingContent = {
+              Switch(
+                checked = isAcademicTheme,
+                onCheckedChange = { viewModel.toggleThemePalette() }
+              )
             }
           )
 
@@ -316,7 +439,7 @@ fun ProfileScreen(
           // Dark Mode Toggle
           ListItem(
             headlineContent = { Text("الوضع الليلي / النهاري", fontWeight = FontWeight.SemiBold) },
-            supportingContent = { Text(if (isDarkMode) "الوضع الداكن (القرمزي الأحمر)" else "الوضع الفاتح (البنفسجي الأرجواني)") },
+            supportingContent = { Text(if (isDarkMode) "الوضع الداكن الليلي" else "الوضع الفاتح") },
             leadingContent = {
               Icon(
                 imageVector = if (isDarkMode) Icons.Default.WbSunny else Icons.Default.NightlightRound,

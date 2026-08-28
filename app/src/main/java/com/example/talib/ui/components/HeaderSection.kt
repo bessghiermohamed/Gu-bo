@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -85,7 +86,7 @@ fun HeaderSection(
                 .testTag("back_button")
             ) {
               Icon(
-                imageVector = Icons.Default.ArrowForward, // In RTL, forward arrow points back
+                imageVector = Icons.AutoMirrored.Filled.ArrowForward, // In RTL, forward arrow points back
                 contentDescription = "الرجوع",
                 tint = MaterialTheme.colorScheme.primary
               )
@@ -132,7 +133,7 @@ fun HeaderSection(
               modifier = Modifier.testTag("admin_exit_btn")
             ) {
               Icon(
-                imageVector = Icons.Default.ExitToApp,
+                imageVector = Icons.AutoMirrored.Filled.ExitToApp,
                 contentDescription = "الخروج من الإدارة",
                 modifier = Modifier.size(16.dp)
               )

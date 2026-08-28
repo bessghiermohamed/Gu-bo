@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -32,15 +33,18 @@ fun GradesScreen(
   val gpa by viewModel.calculatedGPA.collectAsStateWithLifecycle()
 
   var editingGrade by remember { mutableStateOf<StudentGrade?>(null) }
+  var selectedFilter by remember { mutableStateOf("الكل") } // "الكل", "رسمية", "تقديرية"
 
   // Edit Grade Dialog
   editingGrade?.let { grade ->
     var tdText by remember { mutableStateOf(grade.continuousScore.toString()) }
     var examText by remember { mutableStateOf(grade.examScore.toString()) }
+    var targetText by remember { mutableStateOf(grade.targetScore.toString()) }
+    var isOfficialCheck by remember { mutableStateOf(grade.isOfficial) }
 
     AlertDialog(
       onDismissRequest = { editingGrade = null },
-      title = { Text("تعديل علامة: ${grade.moduleName}", fontWeight = FontWeight.Bold) },
+      title = { Text("تعديل علامات: ${grade.moduleName}", fontWeight = FontWeight.Bold) },
       text = {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
           OutlinedTextField(
@@ -59,6 +63,26 @@ fun GradesScreen(
             shape = RoundedCornerShape(12.dp),
             modifier = Modifier.fillMaxWidth()
           )
+          OutlinedTextField(
+            value = targetText,
+            onValueChange = { targetText = it },
+            label = { Text("العلامة المستهدفة للمقياس (Target)") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier.fillMaxWidth()
+          )
+
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+          ) {
+            Text("نقطة رسمية موثقة من الإدارة", style = MaterialTheme.typography.bodyMedium)
+            Switch(
+              checked = isOfficialCheck,
+              onCheckedChange = { isOfficialCheck = it }
+            )
+          }
         }
       },
       confirmButton = {
@@ -66,12 +90,19 @@ fun GradesScreen(
           onClick = {
             val tdVal = tdText.toDoubleOrNull() ?: grade.continuousScore
             val exVal = examText.toDoubleOrNull() ?: grade.examScore
+            val targetVal = targetText.toDoubleOrNull() ?: grade.targetScore
             viewModel.updateGradeScore(grade, tdVal, exVal)
+            if (isOfficialCheck != grade.isOfficial) {
+              viewModel.toggleGradeOfficial(grade)
+            }
+            if (targetVal != grade.targetScore) {
+              viewModel.updateGradeTarget(grade, targetVal)
+            }
             editingGrade = null
           },
           shape = RoundedCornerShape(10.dp)
         ) {
-          Text("حفظ العلامات")
+          Text("حفظ التعديلات")
         }
       },
       dismissButton = {
@@ -80,6 +111,12 @@ fun GradesScreen(
         }
       }
     )
+  }
+
+  val filteredGrades = when (selectedFilter) {
+    "رسمية" -> grades.filter { it.isOfficial }
+    "تقديرية" -> grades.filter { !it.isOfficial }
+    else -> grades
   }
 
   val totalCredits = grades.filter {
@@ -132,7 +169,7 @@ fun GradesScreen(
               .clip(RoundedCornerShape(12.dp))
               .background(
                 when {
-                  gpa >= 14.0 -> Color(0xFF10B981)
+                  gpa >= 16.0 -> Color(0xFF10B981)
                   gpa >= 10.0 -> MaterialTheme.colorScheme.primary
                   else -> Color(0xFFEF4444)
                 }
@@ -165,9 +202,9 @@ fun GradesScreen(
               )
             }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-              Text(text = "عدد المقاييس الموفقة", style = MaterialTheme.typography.bodySmall)
+              Text(text = "نقاط معتمدة رسمياً", style = MaterialTheme.typography.bodySmall)
               Text(
-                text = "${grades.count { ((it.continuousScore * 0.4) + (it.examScore * 0.6)) >= 10.0 }} / ${grades.size}",
+                text = "${grades.count { it.isOfficial }} من ${grades.size}",
                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Black)
               )
             }
@@ -176,21 +213,41 @@ fun GradesScreen(
       }
     }
 
-    // 2. Module Grades Breakdown
+    // 2. Filter & Estimation notice
     item {
-      Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-      ) {
-        Text(
-          text = "كشف نقاط المقاييس (اضغط للتعديل)",
-          style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-        )
+      Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.SpaceBetween,
+          verticalAlignment = Alignment.CenterVertically
+        ) {
+          Text(
+            text = "كشف النقاط ومحاكاة المعدل",
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+          )
+        }
+
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+          FilterChip(
+            selected = selectedFilter == "الكل",
+            onClick = { selectedFilter = "الكل" },
+            label = { Text("الكل (${grades.size})") }
+          )
+          FilterChip(
+            selected = selectedFilter == "رسمية",
+            onClick = { selectedFilter = "رسمية" },
+            label = { Text("رسمية موثقة (${grades.count { it.isOfficial }})") }
+          )
+          FilterChip(
+            selected = selectedFilter == "تقديرية",
+            onClick = { selectedFilter = "تقديرية" },
+            label = { Text("تقديرات تجريبية (${grades.count { !it.isOfficial }})") }
+          )
+        }
       }
     }
 
-    items(grades, key = { it.id }) { grade ->
+    items(filteredGrades, key = { it.id }) { grade ->
       val moduleAvg = (grade.continuousScore * 0.4) + (grade.examScore * 0.6)
       val isPassed = moduleAvg >= 10.0
 
@@ -211,11 +268,35 @@ fun GradesScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
           ) {
-            Text(
-              text = grade.moduleName,
-              style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Black, fontSize = 15.sp),
+            Row(
+              verticalAlignment = Alignment.CenterVertically,
+              horizontalArrangement = Arrangement.spacedBy(8.dp),
               modifier = Modifier.weight(1f)
-            )
+            ) {
+              Text(
+                text = grade.moduleName,
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Black, fontSize = 15.sp)
+              )
+
+              Box(
+                modifier = Modifier
+                  .clip(RoundedCornerShape(6.dp))
+                  .background(
+                    if (grade.isOfficial) Color(0xFF10B981).copy(alpha = 0.15f)
+                    else Color(0xFFD97706).copy(alpha = 0.15f)
+                  )
+                  .padding(horizontal = 6.dp, vertical = 2.dp)
+              ) {
+                Text(
+                  text = if (grade.isOfficial) "رسمية ✓" else "تقديرية ✍️",
+                  style = MaterialTheme.typography.labelSmall.copy(
+                    color = if (grade.isOfficial) Color(0xFF047857) else Color(0xFFB45309),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 10.sp
+                  )
+                )
+              }
+            }
 
             IconButton(
               onClick = { editingGrade = grade },
@@ -236,7 +317,7 @@ fun GradesScreen(
             verticalAlignment = Alignment.CenterVertically
           ) {
             Text(
-              text = "TD/TP: ${grade.continuousScore}  •  امتحان: ${grade.examScore}  •  معامل: ${grade.coefficient}",
+              text = "TD: ${grade.continuousScore}  •  امتحان: ${grade.examScore}  •  معامل: ${grade.coefficient}",
               style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
             )
 
@@ -255,8 +336,29 @@ fun GradesScreen(
               )
             }
           }
+
+          if (!grade.isOfficial) {
+            Row(
+              modifier = Modifier.fillMaxWidth(),
+              horizontalArrangement = Arrangement.SpaceBetween,
+              verticalAlignment = Alignment.CenterVertically
+            ) {
+              Text(
+                text = "العلامة المستهدفة للنجاح: ${grade.targetScore} / 20",
+                style = MaterialTheme.typography.labelSmall.copy(color = Color(0xFFB45309))
+              )
+
+              TextButton(
+                onClick = { viewModel.toggleGradeOfficial(grade) },
+                contentPadding = PaddingValues(0.dp)
+              ) {
+                Text("اعتماد كنقطة رسمية", style = MaterialTheme.typography.labelSmall)
+              }
+            }
+          }
         }
       }
     }
   }
 }
+

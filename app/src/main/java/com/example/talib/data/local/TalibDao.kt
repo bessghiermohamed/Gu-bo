@@ -166,4 +166,72 @@ interface TalibDao {
 
   @Update
   suspend fun updateStudentProfile(profile: StudentProfile)
+
+  // --- Offline Course Content Caching & Previously Viewed Tracking ---
+  @Query("UPDATE lectures SET lastViewedTimestamp = :timestamp, isCachedOffline = 1 WHERE id = :lectureId")
+  suspend fun markLectureAsViewed(lectureId: Long, timestamp: Long)
+
+  @Query("UPDATE modules SET lastViewedTimestamp = :timestamp, isCachedOffline = 1 WHERE id = :moduleId")
+  suspend fun markModuleAsViewed(moduleId: Long, timestamp: Long)
+
+  @Query("SELECT * FROM lectures WHERE lastViewedTimestamp > 0 ORDER BY lastViewedTimestamp DESC")
+  fun getPreviouslyViewedLectures(): Flow<List<Lecture>>
+
+  @Query("SELECT * FROM modules WHERE lastViewedTimestamp > 0 ORDER BY lastViewedTimestamp DESC")
+  fun getPreviouslyViewedModules(): Flow<List<ModuleCourse>>
+
+  @Query("SELECT * FROM lectures WHERE isCachedOffline = 1 OR isDownloaded = 1 ORDER BY weekNumber ASC")
+  fun getOfflineAvailableLectures(): Flow<List<Lecture>>
+
+  // Cached Course Materials
+  @Query("SELECT * FROM cached_materials WHERE id = :id LIMIT 1")
+  suspend fun getCachedMaterialById(id: Long): CachedCourseMaterial?
+
+  @Query("SELECT * FROM cached_materials ORDER BY lastViewedTimestamp DESC")
+  fun getAllCachedMaterials(): Flow<List<CachedCourseMaterial>>
+
+  @Query("SELECT * FROM cached_materials WHERE moduleId = :moduleId ORDER BY weekNumber ASC")
+  fun getCachedMaterialsForModule(moduleId: Long): Flow<List<CachedCourseMaterial>>
+
+  @Insert(onConflict = OnConflictStrategy.REPLACE)
+  suspend fun insertCachedMaterial(material: CachedCourseMaterial): Long
+
+  @Insert(onConflict = OnConflictStrategy.REPLACE)
+  suspend fun insertCachedMaterials(materials: List<CachedCourseMaterial>)
+
+  @Query("UPDATE cached_materials SET lastViewedTimestamp = :timestamp WHERE id = :materialId")
+  suspend fun markCachedMaterialAsViewed(materialId: Long, timestamp: Long)
+
+  @Delete
+  suspend fun deleteCachedMaterial(material: CachedCourseMaterial)
+
+  @Query("DELETE FROM cached_materials")
+  suspend fun clearAllCachedMaterials()
+
+  // --- Student Personal Notes (ملفاتي) ---
+  @Query("SELECT * FROM student_notes ORDER BY id DESC")
+  fun getAllNotes(): Flow<List<StudentNote>>
+
+  @Insert(onConflict = OnConflictStrategy.REPLACE)
+  suspend fun insertNote(note: StudentNote): Long
+
+  @Delete
+  suspend fun deleteNote(note: StudentNote)
+
+  // --- State Updates ---
+  @Query("UPDATE lectures SET isRead = :isRead WHERE id = :lectureId")
+  suspend fun updateLectureReadStatus(lectureId: Long, isRead: Boolean)
+
+  @Query("UPDATE lectures SET isBookmarked = :isBookmarked WHERE id = :lectureId")
+  suspend fun updateLectureBookmarkStatus(lectureId: Long, isBookmarked: Boolean)
+
+  @Query("UPDATE announcements SET isRead = :isRead WHERE id = :announcementId")
+  suspend fun updateAnnouncementReadStatus(announcementId: Long, isRead: Boolean)
+
+  @Query("UPDATE grades SET isOfficial = :isOfficial WHERE id = :gradeId")
+  suspend fun updateGradeOfficialStatus(gradeId: Long, isOfficial: Boolean)
+
+  @Query("UPDATE grades SET targetScore = :targetScore WHERE id = :gradeId")
+  suspend fun updateGradeTargetScore(gradeId: Long, targetScore: Double)
 }
+

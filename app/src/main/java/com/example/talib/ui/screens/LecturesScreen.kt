@@ -185,7 +185,8 @@ fun LecturesScreen(
           moduleName = mod?.name ?: "مقياس دراسي",
           onOpenPdf = { viewModel.openPdfViewer(lecture) },
           onToggleBookmark = { viewModel.toggleBookmark(lecture) },
-          onToggleDownload = { viewModel.toggleDownloaded(lecture) }
+          onToggleDownload = { viewModel.toggleDownloaded(lecture) },
+          onToggleRead = { viewModel.toggleLectureRead(lecture) }
         )
       }
     }
@@ -198,7 +199,8 @@ fun LectureCardItem(
   moduleName: String,
   onOpenPdf: () -> Unit,
   onToggleBookmark: () -> Unit,
-  onToggleDownload: () -> Unit
+  onToggleDownload: () -> Unit,
+  onToggleRead: () -> Unit
 ) {
   Card(
     shape = RoundedCornerShape(20.dp),
@@ -238,6 +240,24 @@ fun LectureCardItem(
             )
           }
 
+          if (!lecture.isRead) {
+            Box(
+              modifier = Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color(0xFF10B981))
+                .padding(horizontal = 6.dp, vertical = 2.dp)
+            ) {
+              Text(
+                text = "جديد",
+                style = MaterialTheme.typography.labelSmall.copy(
+                  color = Color.White,
+                  fontWeight = FontWeight.Bold,
+                  fontSize = 10.sp
+                )
+              )
+            }
+          }
+
           Text(
             text = moduleName,
             style = MaterialTheme.typography.labelSmall.copy(
@@ -247,9 +267,47 @@ fun LectureCardItem(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
           )
+
+          if (lecture.isCachedOffline || lecture.lastViewedTimestamp > 0) {
+            Box(
+              modifier = Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color(0xFF10B981).copy(alpha = 0.15f))
+                .padding(horizontal = 6.dp, vertical = 2.dp)
+            ) {
+              Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(3.dp)
+              ) {
+                Icon(
+                  imageVector = Icons.Default.OfflinePin,
+                  contentDescription = null,
+                  tint = Color(0xFF10B981),
+                  modifier = Modifier.size(12.dp)
+                )
+                Text(
+                  text = "أوفلاين",
+                  style = MaterialTheme.typography.labelSmall.copy(
+                    color = Color(0xFF10B981),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 10.sp
+                  )
+                )
+              }
+            }
+          }
         }
 
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+          IconButton(onClick = onToggleRead, modifier = Modifier.size(36.dp)) {
+            Icon(
+              imageVector = if (lecture.isRead) Icons.Default.DoneAll else Icons.Outlined.CheckCircle,
+              contentDescription = if (lecture.isRead) "تمت قراءتها" else "تعليم كمقروءة",
+              tint = if (lecture.isRead) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+              modifier = Modifier.size(18.dp)
+            )
+          }
+
           IconButton(onClick = onToggleBookmark, modifier = Modifier.size(36.dp)) {
             Icon(
               imageVector = if (lecture.isBookmarked) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,

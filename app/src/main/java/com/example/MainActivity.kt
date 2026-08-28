@@ -32,6 +32,7 @@ class MainActivity : ComponentActivity() {
       val talibViewModel: TalibViewModel = viewModel()
 
       val isDarkMode by talibViewModel.isDarkMode.collectAsStateWithLifecycle()
+      val isAcademicTheme by talibViewModel.isAcademicTheme.collectAsStateWithLifecycle()
       val currentScreen by talibViewModel.currentScreen.collectAsStateWithLifecycle()
       val isLoading by talibViewModel.isLoading.collectAsStateWithLifecycle()
       val loadingMessage by talibViewModel.loadingMessage.collectAsStateWithLifecycle()
@@ -42,7 +43,7 @@ class MainActivity : ComponentActivity() {
       }
 
       CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-        TalibTheme(darkTheme = isDarkMode) {
+        TalibTheme(darkTheme = isDarkMode, isAcademicTheme = isAcademicTheme) {
           Surface(
             modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colorScheme.background
@@ -51,26 +52,28 @@ class MainActivity : ComponentActivity() {
               modifier = Modifier.fillMaxSize(),
               contentWindowInsets = WindowInsets(0, 0, 0, 0),
               topBar = {
-                HeaderSection(
-                  isDarkMode = isDarkMode,
-                  onToggleTheme = { talibViewModel.toggleTheme() },
-                  currentScreen = currentScreen,
-                  isLoading = isLoading,
-                  onRefresh = { talibViewModel.refreshCourseContent() },
-                  onAdminClick = {
-                    if (currentScreen == ScreenRoute.ADMIN) {
-                      talibViewModel.navigateTo(ScreenRoute.HOME)
-                    } else {
-                      talibViewModel.navigateTo(ScreenRoute.ADMIN)
-                    }
-                  },
-                  onBackClick = if (currentScreen != ScreenRoute.HOME) {
-                    { talibViewModel.navigateBack() }
-                  } else null
-                )
+                if (currentScreen != ScreenRoute.AI_CHAT && currentScreen != ScreenRoute.OFFLINE_CACHE && currentScreen != ScreenRoute.MY_FILES) {
+                  HeaderSection(
+                    isDarkMode = isDarkMode,
+                    onToggleTheme = { talibViewModel.toggleTheme() },
+                    currentScreen = currentScreen,
+                    isLoading = isLoading,
+                    onRefresh = { talibViewModel.refreshCourseContent() },
+                    onAdminClick = {
+                      if (currentScreen == ScreenRoute.ADMIN) {
+                        talibViewModel.navigateTo(ScreenRoute.HOME)
+                      } else {
+                        talibViewModel.navigateTo(ScreenRoute.ADMIN)
+                      }
+                    },
+                    onBackClick = if (currentScreen != ScreenRoute.HOME) {
+                      { talibViewModel.navigateBack() }
+                    } else null
+                  )
+                }
               },
               bottomBar = {
-                if (currentScreen != ScreenRoute.ADMIN) {
+                if (currentScreen != ScreenRoute.ADMIN && currentScreen != ScreenRoute.AI_CHAT && currentScreen != ScreenRoute.OFFLINE_CACHE) {
                   TalibBottomNavBar(
                     currentScreen = currentScreen,
                     onNavigate = { route -> talibViewModel.navigateTo(route) }
@@ -109,6 +112,18 @@ class MainActivity : ComponentActivity() {
                     )
                     ScreenRoute.LECTURES -> LecturesScreen(
                       viewModel = talibViewModel
+                    )
+                    ScreenRoute.AI_CHAT -> AcademicChatbotScreen(
+                      viewModel = talibViewModel,
+                      onNavigateBack = { talibViewModel.navigateBack() }
+                    )
+                    ScreenRoute.MY_FILES -> MyFilesScreen(
+                      viewModel = talibViewModel,
+                      onNavigate = { route -> talibViewModel.navigateTo(route) }
+                    )
+                    ScreenRoute.OFFLINE_CACHE -> OfflineVaultScreen(
+                      viewModel = talibViewModel,
+                      onNavigateBack = { talibViewModel.navigateBack() }
                     )
                     ScreenRoute.ASSIGNMENTS -> AssignmentsScreen(
                       viewModel = talibViewModel

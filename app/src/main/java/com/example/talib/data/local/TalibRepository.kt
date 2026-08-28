@@ -63,4 +63,48 @@ class TalibRepository(private val dao: TalibDao) {
   // Student Profile
   val studentProfile: Flow<StudentProfile?> = dao.getStudentProfile()
   suspend fun updateStudentProfile(profile: StudentProfile) = dao.updateStudentProfile(profile)
+
+  // Offline Caching & Previously Viewed Materials
+  val previouslyViewedLectures: Flow<List<Lecture>> = dao.getPreviouslyViewedLectures()
+  val previouslyViewedModules: Flow<List<ModuleCourse>> = dao.getPreviouslyViewedModules()
+  val offlineAvailableLectures: Flow<List<Lecture>> = dao.getOfflineAvailableLectures()
+  val allCachedMaterials: Flow<List<CachedCourseMaterial>> = dao.getAllCachedMaterials()
+  fun getCachedMaterialsForModule(moduleId: Long): Flow<List<CachedCourseMaterial>> =
+    dao.getCachedMaterialsForModule(moduleId)
+
+  suspend fun markLectureAsViewed(lectureId: Long, timestamp: Long = System.currentTimeMillis()) =
+    dao.markLectureAsViewed(lectureId, timestamp)
+
+  suspend fun markModuleAsViewed(moduleId: Long, timestamp: Long = System.currentTimeMillis()) =
+    dao.markModuleAsViewed(moduleId, timestamp)
+
+  suspend fun markCachedMaterialAsViewed(materialId: Long, timestamp: Long = System.currentTimeMillis()) =
+    dao.markCachedMaterialAsViewed(materialId, timestamp)
+
+  suspend fun insertCachedMaterial(material: CachedCourseMaterial) = dao.insertCachedMaterial(material)
+  suspend fun insertCachedMaterials(materials: List<CachedCourseMaterial>) = dao.insertCachedMaterials(materials)
+  suspend fun deleteCachedMaterial(material: CachedCourseMaterial) = dao.deleteCachedMaterial(material)
+  suspend fun clearAllCachedMaterials() = dao.clearAllCachedMaterials()
+
+  // Student Notes (ملفاتي)
+  val allNotes: Flow<List<StudentNote>> = dao.getAllNotes()
+  suspend fun insertNote(note: StudentNote) = dao.insertNote(note)
+  suspend fun deleteNote(note: StudentNote) = dao.deleteNote(note)
+
+  // Status updates
+  suspend fun updateLectureReadStatus(lectureId: Long, isRead: Boolean) =
+    dao.updateLectureReadStatus(lectureId, isRead)
+
+  suspend fun updateLectureBookmarkStatus(lectureId: Long, isBookmarked: Boolean) =
+    dao.updateLectureBookmarkStatus(lectureId, isBookmarked)
+
+  suspend fun updateAnnouncementReadStatus(announcementId: Long, isRead: Boolean) =
+    dao.updateAnnouncementReadStatus(announcementId, isRead)
+
+  suspend fun updateGradeOfficialStatus(gradeId: Long, isOfficial: Boolean) =
+    dao.updateGradeOfficialStatus(gradeId, isOfficial)
+
+  suspend fun updateGradeTargetScore(gradeId: Long, targetScore: Double) =
+    dao.updateGradeTargetScore(gradeId, targetScore)
 }
+

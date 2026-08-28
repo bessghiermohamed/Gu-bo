@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -46,6 +47,9 @@ fun HomeScreen(
   val schedule by viewModel.currentSchedule.collectAsStateWithLifecycle()
   val exams by viewModel.allExams.collectAsStateWithLifecycle()
   val modules by viewModel.currentModules.collectAsStateWithLifecycle()
+  val viewedLectures by viewModel.previouslyViewedLectures.collectAsStateWithLifecycle()
+  val cachedMaterials by viewModel.allCachedMaterials.collectAsStateWithLifecycle()
+  val isOfflineMode by viewModel.isOfflineMode.collectAsStateWithLifecycle()
 
   LazyColumn(
     modifier = Modifier
@@ -106,7 +110,7 @@ fun HomeScreen(
                 )
               )
               Text(
-                text = "${profile?.specialtyName ?: "الأدب العربي"} • ${profile?.academicYearName ?: "السنة الثانية"}",
+                text = "${profile?.institution ?: "المدرسة العليا للأساتذة"} • ${profile?.profileTrack ?: profile?.specialtyName ?: "الأدب العربي"}",
                 style = MaterialTheme.typography.bodyMedium.copy(
                   color = Color.White.copy(alpha = 0.85f),
                   fontWeight = FontWeight.Medium
@@ -175,7 +179,177 @@ fun HomeScreen(
       }
     }
 
-    // 2. The 8 Main Functional Grid Cards (Faithful to prototype)
+    // 1.5. 24/7 Firebase Genkit AI Assistant Card
+    item {
+      Card(
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+          containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+        modifier = Modifier
+          .fillMaxWidth()
+          .padding(horizontal = 16.dp)
+          .clickable { onNavigate(ScreenRoute.AI_CHAT) }
+          .testTag("home_ai_assistant_card")
+      ) {
+        Row(
+          modifier = Modifier.padding(16.dp),
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+          Box(
+            modifier = Modifier
+              .size(50.dp)
+              .clip(CircleShape)
+              .background(
+                Brush.linearGradient(
+                  listOf(
+                    MaterialTheme.colorScheme.primary,
+                    MaterialTheme.colorScheme.tertiary
+                  )
+                )
+              ),
+            contentAlignment = Alignment.Center
+          ) {
+            Icon(
+              imageVector = Icons.Default.AutoAwesome,
+              contentDescription = "AI",
+              tint = Color.White,
+              modifier = Modifier.size(26.dp)
+            )
+          }
+
+          Column(modifier = Modifier.weight(1f)) {
+            Row(
+              verticalAlignment = Alignment.CenterVertically,
+              horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+              Text(
+                text = "المساعد الأكاديمي الذكي 24/7",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black)
+              )
+              Box(
+                modifier = Modifier
+                  .clip(RoundedCornerShape(6.dp))
+                  .background(MaterialTheme.colorScheme.primary)
+                  .padding(horizontal = 6.dp, vertical = 2.dp)
+              ) {
+                Text(
+                  text = "Genkit AI",
+                  style = MaterialTheme.typography.labelSmall.copy(
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 9.sp
+                  )
+                )
+              }
+            }
+
+            Spacer(modifier = Modifier.height(2.dp))
+
+            Text(
+              text = "دعم أكاديمي مباشر: شرح المحاضرات، حل تمارين الأعمال الموجهة TD، والتحضير للامتحانات.",
+              style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Row(
+              verticalAlignment = Alignment.CenterVertically,
+              horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+              Text(
+                text = "اسأل المساعد الآن",
+                style = MaterialTheme.typography.labelSmall.copy(
+                  color = MaterialTheme.colorScheme.primary,
+                  fontWeight = FontWeight.Bold
+                )
+              )
+              Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(14.dp)
+              )
+            }
+          }
+        }
+      }
+    }
+
+    // 1.6. Offline Room Database Cache Status Card
+    item {
+      Card(
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(
+          containerColor = if (isOfflineMode) Color(0xFFFEF3C7) else MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        modifier = Modifier
+          .fillMaxWidth()
+          .padding(horizontal = 16.dp)
+          .clickable { onNavigate(ScreenRoute.OFFLINE_CACHE) }
+          .testTag("home_offline_cache_card")
+      ) {
+        Row(
+          modifier = Modifier.padding(14.dp),
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+          Box(
+            modifier = Modifier
+              .size(42.dp)
+              .clip(CircleShape)
+              .background(if (isOfflineMode) Color(0xFFF59E0B) else Color(0xFF10B981).copy(alpha = 0.15f)),
+            contentAlignment = Alignment.Center
+          ) {
+            Icon(
+              imageVector = if (isOfflineMode) Icons.Default.WifiOff else Icons.Default.OfflinePin,
+              contentDescription = null,
+              tint = if (isOfflineMode) Color.White else Color(0xFF10B981),
+              modifier = Modifier.size(22.dp)
+            )
+          }
+
+          Column(modifier = Modifier.weight(1f)) {
+            Row(
+              verticalAlignment = Alignment.CenterVertically,
+              horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+              Text(
+                text = "المحتوى المخزن بدون إنترنت (Room DB)",
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
+              )
+              if (isOfflineMode) {
+                Box(
+                  modifier = Modifier
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(Color(0xFFD97706))
+                    .padding(horizontal = 4.dp, vertical = 1.dp)
+                ) {
+                  Text(
+                    text = "غير متصل",
+                    style = MaterialTheme.typography.labelSmall.copy(color = Color.White, fontSize = 9.sp)
+                  )
+                }
+              }
+            }
+
+            Text(
+              text = "${viewedLectures.size + cachedMaterials.size} محاضرة وملخص جاهزة للعرض الفوري بدون شبكة.",
+              style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
+            )
+          }
+
+          TextButton(onClick = { onNavigate(ScreenRoute.OFFLINE_CACHE) }) {
+            Text("فتح الذاكرة")
+          }
+        }
+      }
+    }
+
+    // 2. The 10 Main Functional Grid Cards (Faithful to prototype)
     item {
       Column(
         modifier = Modifier
@@ -195,7 +369,7 @@ fun HomeScreen(
         ) {
           GridActionCard(
             title = "المقررات",
-            icon = Icons.Default.MenuBook,
+            icon = Icons.AutoMirrored.Filled.MenuBook,
             badgeText = "${modules.size} مقاييس",
             isDarkMode = isDarkMode,
             delayOffsetMs = 0,
@@ -291,6 +465,32 @@ fun HomeScreen(
             modifier = Modifier.weight(1f)
           )
         }
+
+        // Row 5: ملفاتي وملاحظاتي + المساعد الذكي AI
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+          GridActionCard(
+            title = "ملفاتي وملاحظاتي",
+            icon = Icons.Default.FolderSpecial,
+            badgeText = "محفوظاتي وملاحظاتي",
+            isDarkMode = isDarkMode,
+            delayOffsetMs = 250,
+            onClick = { onNavigate(ScreenRoute.MY_FILES) },
+            modifier = Modifier.weight(1f)
+          )
+
+          GridActionCard(
+            title = "المساعد الذكي",
+            icon = Icons.Default.AutoAwesome,
+            badgeText = "Genkit AI 24/7",
+            isDarkMode = isDarkMode,
+            delayOffsetMs = 650,
+            onClick = { onNavigate(ScreenRoute.AI_CHAT) },
+            modifier = Modifier.weight(1f)
+          )
+        }
       }
     }
 
@@ -351,7 +551,7 @@ fun HomeScreen(
                   contentAlignment = Alignment.Center
                 ) {
                   Icon(
-                    imageVector = if (item.type.contains("محاضرة")) Icons.Default.School else Icons.Default.MenuBook,
+                    imageVector = if (item.type.contains("محاضرة")) Icons.Default.School else Icons.AutoMirrored.Filled.MenuBook,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary
                   )

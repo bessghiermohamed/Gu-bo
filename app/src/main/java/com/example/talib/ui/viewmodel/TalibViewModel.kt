@@ -3,13 +3,17 @@ package com.example.talib.ui.viewmodel
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.talib.ai.*
 import com.example.talib.data.local.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class TalibViewModel(application: Application) : AndroidViewModel(application) {
   private val repository: TalibRepository
+  private val aiService = FirebaseGenkitAcademicService(application)
 
   init {
     val db = TalibDatabase.getDatabase(application, viewModelScope)
@@ -22,6 +26,38 @@ class TalibViewModel(application: Application) : AndroidViewModel(application) {
 
   fun toggleTheme() {
     _isDarkMode.value = !_isDarkMode.value
+  }
+
+  // Academic Emerald & Cream vs Modern Violet Palette
+  private val _isAcademicTheme = MutableStateFlow(true)
+  val isAcademicTheme: StateFlow<Boolean> = _isAcademicTheme.asStateFlow()
+
+  fun toggleThemePalette() {
+    _isAcademicTheme.value = !_isAcademicTheme.value
+  }
+
+  // Student Notes (ملفاتي)
+  val allNotes: StateFlow<List<StudentNote>> = repository.allNotes
+    .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+  fun addNote(title: String, content: String, moduleName: String = "عام", colorHex: String = "#1B5E4B") {
+    viewModelScope.launch(Dispatchers.IO) {
+      repository.insertNote(
+        StudentNote(
+          title = title,
+          content = content,
+          moduleName = moduleName,
+          createdAt = "اليوم",
+          colorHex = colorHex
+        )
+      )
+    }
+  }
+
+  fun deleteNote(note: StudentNote) {
+    viewModelScope.launch(Dispatchers.IO) {
+      repository.deleteNote(note)
+    }
   }
 
   // Global Loading State for Backend & Course Content Fetching
@@ -135,10 +171,175 @@ class TalibViewModel(application: Application) : AndroidViewModel(application) {
 
   fun openPdfViewer(lecture: Lecture) {
     _activePdfLecture.value = lecture
+    recordLectureViewed(lecture)
   }
 
   fun closePdfViewer() {
     _activePdfLecture.value = null
+  }
+
+  // --- Offline Mode & Room Database Course Caching ---
+  private val _isOfflineMode = MutableStateFlow(false)
+  val isOfflineMode: StateFlow<Boolean> = _isOfflineMode.asStateFlow()
+
+  fun toggleOfflineMode() {
+    _isOfflineMode.value = !_isOfflineMode.value
+  }
+
+  val previouslyViewedLectures: StateFlow<List<Lecture>> = repository.previouslyViewedLectures
+    .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+  val previouslyViewedModules: StateFlow<List<ModuleCourse>> = repository.previouslyViewedModules
+    .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+  val offlineAvailableLectures: StateFlow<List<Lecture>> = repository.offlineAvailableLectures
+    .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+  val allCachedMaterials: StateFlow<List<CachedCourseMaterial>> = repository.allCachedMaterials
+    .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+  private val _selectedCachedMaterial = MutableStateFlow<CachedCourseMaterial?>(null)
+  val selectedCachedMaterial: StateFlow<CachedCourseMaterial?> = _selectedCachedMaterial.asStateFlow()
+
+  fun openCachedMaterial(material: CachedCourseMaterial) {
+    _selectedCachedMaterial.value = material
+    recordMaterialViewed(material)
+  }
+
+  fun closeCachedMaterial() {
+    _selectedCachedMaterial.value = null
+  }
+
+  fun recordLectureViewed(lecture: Lecture) {
+    viewModelScope.launch(Dispatchers.IO) {
+      repository.markLectureAsViewed(lecture.id, System.currentTimeMillis())
+    }
+  }
+
+  fun recordModuleViewed(module: ModuleCourse) {
+    viewModelScope.launch(Dispatchers.IO) {
+      repository.markModuleAsViewed(module.id, System.currentTimeMillis())
+    }
+  }
+
+  fun recordMaterialViewed(material: CachedCourseMaterial) {
+    viewModelScope.launch(Dispatchers.IO) {
+      repository.markCachedMaterialAsViewed(material.id, System.currentTimeMillis())
+    }
+  }
+
+  fun cacheCourseContentForOffline(moduleId: Long) {
+    viewModelScope.launch(Dispatchers.IO) {
+      setLoading(true, "جاري تحميل وتخزين المقرر في قاعدة الذاكرة المحلية (Room Database)...")
+      repository.markModuleAsViewed(moduleId, System.currentTimeMillis())
+      kotlinx.coroutines.delay(800)
+      setLoading(false)
+    }
+  }
+
+  fun deleteCachedMaterial(material: CachedCourseMaterial) {
+    viewModelScope.launch(Dispatchers.IO) {
+      repository.deleteCachedMaterial(material)
+    }
+  }
+
+  // --- 24/7 Academic AI Chatbot (Firebase Genkit AI) ---
+  private val _chatMessages = MutableStateFlow<List<ChatMessage>>(
+    listOf(
+      ChatMessage(
+        text = "مرحباً بك في المساعد الأكاديمي الذكي 24/7 لمنصة طالب! 🎓\nأنا مدعوم بمكتبة Firebase Genkit AI لتقديم الدعم الأكاديمي الشامل: شرح المحاضرات، حل تمارين الأعمال الموجهة TD، مراجعة الامتحانات، وتلخيص المقررات على مدار الساعة.\nكيف يمكنني مساعدتك في دراستك اليوم؟",
+        isFromUser = false,
+        categoryBadge = "المساعد الأكاديمي 24/7",
+        suggestedActions = listOf(
+          "📚 اشرح لي درس النحو (المبتدأ والخبر)",
+          "💻 كيف تعمل خوارزمية البحث الثنائي؟",
+          "📊 كيف أحسب معدلي الفصلي في نظام LMD؟",
+          "🎯 نصائح ذكية للتحضير للامتحانات"
+        )
+      )
+    )
+  )
+  val chatMessages: StateFlow<List<ChatMessage>> = _chatMessages.asStateFlow()
+
+  private val _isAiThinking = MutableStateFlow(false)
+  val isAiThinking: StateFlow<Boolean> = _isAiThinking.asStateFlow()
+
+  private val _currentChatInput = MutableStateFlow("")
+  val currentChatInput: StateFlow<String> = _currentChatInput.asStateFlow()
+
+  fun updateChatInput(input: String) {
+    _currentChatInput.value = input
+  }
+
+  fun sendAcademicChatMessage(promptText: String? = null) {
+    val textToSend = promptText ?: _currentChatInput.value.trim()
+    if (textToSend.isBlank() || _isAiThinking.value) return
+
+    val userMessage = ChatMessage(
+      text = textToSend,
+      isFromUser = true
+    )
+
+    _chatMessages.value = _chatMessages.value + userMessage
+    if (promptText == null) {
+      _currentChatInput.value = ""
+    }
+
+    viewModelScope.launch {
+      _isAiThinking.value = true
+      try {
+        val currentProf = studentProfile.value
+        val modulesList = currentModules.value.map { it.name }
+        val examsList = allExams.value.map { "${it.moduleName}: ${it.title}" }
+
+        val studentContext = StudentAcademicContext(
+          studentName = currentProf?.fullName ?: "طالب العلم",
+          specialty = currentProf?.specialtyName ?: "الأدب العربي واللغات",
+          academicYear = currentProf?.academicYearName ?: "السنة الثانية - ليسانس L2",
+          currentModules = modulesList,
+          upcomingExams = examsList
+        )
+
+        val (answer, followUps) = aiService.askAcademicAssistant(textToSend, studentContext)
+
+        val aiMessage = ChatMessage(
+          text = answer,
+          isFromUser = false,
+          categoryBadge = "المساعد الأكاديمي",
+          suggestedActions = followUps,
+          isOfflineHandled = _isOfflineMode.value
+        )
+        _chatMessages.value = _chatMessages.value + aiMessage
+      } catch (e: Exception) {
+        val errorMessage = ChatMessage(
+          text = "عذراً، حدث خطأ أثناء معالجة الطلب الأكاديمي. يمكنك إعادة المحاولة أو مراجعة المحتوى المخزن في الذاكرة بدون إنترنت.",
+          isFromUser = false,
+          categoryBadge = "تنبيه"
+        )
+        _chatMessages.value = _chatMessages.value + errorMessage
+      } finally {
+        _isAiThinking.value = false
+      }
+    }
+  }
+
+  fun clearChatHistory() {
+    _chatMessages.value = listOf(
+      ChatMessage(
+        text = "تم بدء محادثة دراسية جديدة. كيف أساعدك في مقرراتك وامتحاناتك؟",
+        isFromUser = false,
+        categoryBadge = "المساعد الأكاديمي 24/7",
+        suggestedActions = listOf(
+          "📚 ما هي أهم أسئلة امتحانات النحو؟",
+          "⚡ خطة مراجعة سريعة لأسبوع الامتحانات",
+          "🔍 شرح مبسط لنظرية العامل في النحو"
+        )
+      )
+    )
+  }
+
+  fun askPredefinedAcademicQuestion(question: String) {
+    sendAcademicChatMessage(question)
   }
 
   // Assignments
@@ -200,7 +401,13 @@ class TalibViewModel(application: Application) : AndroidViewModel(application) {
   // User Actions
   fun toggleBookmark(lecture: Lecture) {
     viewModelScope.launch(Dispatchers.IO) {
-      repository.updateLecture(lecture.copy(isBookmarked = !lecture.isBookmarked))
+      repository.updateLectureBookmarkStatus(lecture.id, !lecture.isBookmarked)
+    }
+  }
+
+  fun toggleLectureRead(lecture: Lecture) {
+    viewModelScope.launch(Dispatchers.IO) {
+      repository.updateLectureReadStatus(lecture.id, !lecture.isRead)
     }
   }
 
@@ -216,6 +423,24 @@ class TalibViewModel(application: Application) : AndroidViewModel(application) {
     }
   }
 
+  fun toggleAnnouncementRead(announcement: Announcement) {
+    viewModelScope.launch(Dispatchers.IO) {
+      repository.updateAnnouncementReadStatus(announcement.id, !announcement.isRead)
+    }
+  }
+
+  fun toggleGradeOfficial(grade: StudentGrade) {
+    viewModelScope.launch(Dispatchers.IO) {
+      repository.updateGradeOfficialStatus(grade.id, !grade.isOfficial)
+    }
+  }
+
+  fun updateGradeTarget(grade: StudentGrade, targetScore: Double) {
+    viewModelScope.launch(Dispatchers.IO) {
+      repository.updateGradeTargetScore(grade.id, targetScore)
+    }
+  }
+
   fun updateGradeScore(grade: StudentGrade, continuousScore: Double, examScore: Double) {
     viewModelScope.launch(Dispatchers.IO) {
       repository.updateGrade(grade.copy(continuousScore = continuousScore, examScore = examScore))
@@ -227,6 +452,47 @@ class TalibViewModel(application: Application) : AndroidViewModel(application) {
       repository.updateStudentProfile(profile)
     }
   }
+
+  fun updateAcademicPath(
+    institution: String,
+    specialtyName: String,
+    profileTrack: String,
+    yearName: String,
+    semesterName: String,
+    groupNumber: String
+  ) {
+    viewModelScope.launch(Dispatchers.IO) {
+      val current = studentProfile.value
+      if (current != null) {
+        repository.updateStudentProfile(
+          current.copy(
+            institution = institution,
+            university = institution,
+            specialtyName = specialtyName,
+            profileTrack = profileTrack,
+            academicYearName = yearName,
+            semesterName = semesterName,
+            groupNumber = groupNumber
+          )
+        )
+      }
+    }
+  }
+
+  fun updateUserRole(role: String) {
+    viewModelScope.launch(Dispatchers.IO) {
+      val current = studentProfile.value
+      if (current != null) {
+        repository.updateStudentProfile(
+          current.copy(
+            userRole = role,
+            isAdminMode = role != "STUDENT"
+          )
+        )
+      }
+    }
+  }
+
 
   // ADMIN / PROFESSOR ACTIONS
   fun addSpecialty(nameAr: String, code: String, desc: String) {
@@ -306,7 +572,14 @@ class TalibViewModel(application: Application) : AndroidViewModel(application) {
     }
   }
 
-  fun publishAnnouncement(title: String, content: String, author: String, urgency: String) {
+  fun publishAnnouncement(
+    title: String,
+    content: String,
+    author: String,
+    urgency: String,
+    visibilityScope: String = "تخصص كامل",
+    targetGroups: String = "الكل"
+  ) {
     viewModelScope.launch(Dispatchers.IO) {
       repository.insertAnnouncement(
         Announcement(
@@ -315,7 +588,9 @@ class TalibViewModel(application: Application) : AndroidViewModel(application) {
           author = author,
           date = "الآن",
           urgency = urgency,
-          specialtyId = _selectedSpecialtyId.value
+          specialtyId = _selectedSpecialtyId.value,
+          visibilityScope = visibilityScope,
+          targetGroups = targetGroups
         )
       )
     }
@@ -388,6 +663,9 @@ enum class ScreenRoute(val titleAr: String) {
   HOME("الرئيسية"),
   COURSES("المقررات"),
   LECTURES("المحاضرات والملفات"),
+  AI_CHAT("المساعد الأكاديمي 24/7"),
+  MY_FILES("ملفاتي"),
+  OFFLINE_CACHE("المحتوى المحفوظ بدون إنترنت"),
   ASSIGNMENTS("الواجبات"),
   SCHEDULE("الجدول الدراسي"),
   EXAMS("الامتحانات"),

@@ -7,7 +7,49 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
-private val DarkColorScheme = darkColorScheme(
+// Academic Authentic Palette (#1B5E4B, #F8F4ED, #C8956C)
+private val AcademicLightColorScheme = lightColorScheme(
+  primary = TalibEmerald,
+  onPrimary = Color.White,
+  primaryContainer = TalibEmeraldContainer,
+  onPrimaryContainer = TalibEmeraldOnContainer,
+  secondary = TalibBronze,
+  onSecondary = Color.White,
+  secondaryContainer = TalibBronzeContainer,
+  onSecondaryContainer = TalibBronzeDark,
+  tertiary = TalibBronzeDark,
+  onTertiary = Color.White,
+  background = TalibCream,
+  onBackground = TextPrimaryLight,
+  surface = TalibCreamSurface,
+  onSurface = TextPrimaryLight,
+  surfaceVariant = TalibCreamCard,
+  onSurfaceVariant = TextSecondaryLight,
+  outline = TalibCreamBorder
+)
+
+private val AcademicDarkColorScheme = darkColorScheme(
+  primary = TalibEmeraldLight,
+  onPrimary = Color.White,
+  primaryContainer = TalibAcademicDarkContainer,
+  onPrimaryContainer = TalibEmeraldContainer,
+  secondary = TalibBronzeLight,
+  onSecondary = Color.Black,
+  secondaryContainer = TalibBronzeDark,
+  onSecondaryContainer = Color.White,
+  tertiary = TalibBronze,
+  onTertiary = Color.Black,
+  background = TalibAcademicDarkBg,
+  onBackground = TalibAcademicDarkText,
+  surface = TalibAcademicDarkSurface,
+  onSurface = TalibAcademicDarkText,
+  surfaceVariant = TalibAcademicDarkContainer,
+  onSurfaceVariant = Color(0xFFA7C4B9),
+  outline = Color(0xFF264C40)
+)
+
+// Modern Purple Palette
+private val ModernDarkColorScheme = darkColorScheme(
   primary = TalibCrimson,
   onPrimary = Color.White,
   primaryContainer = TalibCrimsonDark,
@@ -23,7 +65,7 @@ private val DarkColorScheme = darkColorScheme(
   outline = Color(0xFF4B5563)
 )
 
-private val LightColorScheme = lightColorScheme(
+private val ModernLightColorScheme = lightColorScheme(
   primary = TalibPurple,
   onPrimary = Color.White,
   primaryContainer = TalibPurpleContainer,
@@ -42,9 +84,15 @@ private val LightColorScheme = lightColorScheme(
 @Composable
 fun TalibTheme(
   darkTheme: Boolean = isSystemInDarkTheme(),
+  isAcademicTheme: Boolean = true,
   content: @Composable () -> Unit,
 ) {
-  val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
+  val colorScheme = when {
+    isAcademicTheme && darkTheme -> AcademicDarkColorScheme
+    isAcademicTheme && !darkTheme -> AcademicLightColorScheme
+    !isAcademicTheme && darkTheme -> ModernDarkColorScheme
+    else -> ModernLightColorScheme
+  }
 
   MaterialTheme(
     colorScheme = colorScheme,
@@ -52,3 +100,4 @@ fun TalibTheme(
     content = content
   )
 }
+

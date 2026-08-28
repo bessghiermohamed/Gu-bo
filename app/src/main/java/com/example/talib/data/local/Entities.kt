@@ -32,7 +32,10 @@ data class ModuleCourse(
   val professorName: String = "",
   val professorEmail: String = "",
   val category: String = "أساسي", // أساسي / منهجي / استكشافي
-  val description: String = ""
+  val description: String = "",
+  val isCachedOffline: Boolean = true,
+  val lastViewedTimestamp: Long = 0L,
+  val syllabusTopics: String = ""
 )
 
 @Entity(tableName = "lectures")
@@ -47,7 +50,27 @@ data class Lecture(
   val durationMinutes: Int = 90,
   val date: String = "",
   val isBookmarked: Boolean = false,
-  val isDownloaded: Boolean = false
+  val isDownloaded: Boolean = false,
+  val isCachedOffline: Boolean = true,
+  val isRead: Boolean = false,
+  val lastViewedTimestamp: Long = 0L,
+  val cachedContentText: String = ""
+)
+
+@Entity(tableName = "cached_materials")
+data class CachedCourseMaterial(
+  @PrimaryKey(autoGenerate = true) val id: Long = 0,
+  val moduleId: Long,
+  val moduleName: String,
+  val title: String,
+  val materialType: String = "محاضرة", // محاضرة / ملخص دراسي / أعمال موجهة TD / امتحان سابق
+  val summary: String,
+  val fullText: String,
+  val keyConcepts: String = "",
+  val weekNumber: Int = 1,
+  val cachedDate: String = "مخزن محلياً",
+  val lastViewedTimestamp: Long = System.currentTimeMillis(),
+  val isOfflineAvailable: Boolean = true
 )
 
 @Entity(tableName = "assignments")
@@ -96,7 +119,9 @@ data class StudentGrade(
   val continuousScore: Double = 14.0, // TD / TP out of 20
   val examScore: Double = 15.0, // Exam out of 20
   val coefficient: Double = 2.0,
-  val credits: Int = 4
+  val credits: Int = 4,
+  val isOfficial: Boolean = false, // تمييز بصري صريح: رسمي من الإدارة أو تقديري من الطالب
+  val targetScore: Double = 10.0 // الدرجة المستهدفة للنجاح
 )
 
 @Entity(tableName = "announcements")
@@ -107,7 +132,10 @@ data class Announcement(
   val author: String,
   val date: String,
   val urgency: String = "عام", // عاجل / هام / عام
-  val specialtyId: Long? = null
+  val specialtyId: Long? = null,
+  val isRead: Boolean = false,
+  val visibilityScope: String = "تخصص كامل", // تخصص كامل / عدة أفواج محددة / فوج واحد
+  val targetGroups: String = "الكل"
 )
 
 @Entity(tableName = "student_profiles")
@@ -115,14 +143,31 @@ data class StudentProfile(
   @PrimaryKey val id: Long = 1,
   val fullName: String = "محمد البشير",
   val studentId: String = "202631084592",
-  val university: String = "جامعة الجزائر 1 - بن يوسف بن خدة",
-  val faculty: String = "كلية اللغة العربية والآداب واللغات",
-  val specialtyName: String = "الأدب العربي واللغويات",
+  val institution: String = "المدرسة العليا للأساتذة - بوزريعة (ENS)",
+  val university: String = "المدرسة العليا للأساتذة - بوزريعة",
+  val faculty: String = "قسم اللغة والأدب العربي",
+  val specialtyName: String = "اللغة والأدب العربي",
+  val profileTrack: String = "ملمح أستاذ التعليم الابتدائي",
   val selectedSpecialtyId: Long = 1,
   val selectedYearId: Long = 2,
   val academicYearName: String = "السنة الثانية (L2)",
+  val semesterName: String = "السداسي الأول (S1)",
   val groupNumber: String = "الفوج 03",
   val subGroup: String = "الفوج الفرعي B",
   val email: String = "mohamedbessghier8@gmail.com",
-  val isAdminMode: Boolean = false
+  val isAdminMode: Boolean = false,
+  val userRole: String = "STUDENT", // STUDENT / REPRESENTATIVE / SPECIALTY_ADMIN / OWNER
+  val themePalette: String = "ACADEMIC", // ACADEMIC (#1B5E4B) or MODERN (#8B5CF6)
+  val isConfigured: Boolean = true
 )
+
+@Entity(tableName = "student_notes")
+data class StudentNote(
+  @PrimaryKey(autoGenerate = true) val id: Long = 0,
+  val title: String,
+  val content: String,
+  val moduleName: String = "عام",
+  val createdAt: String = "اليوم",
+  val colorHex: String = "#1B5E4B"
+)
+

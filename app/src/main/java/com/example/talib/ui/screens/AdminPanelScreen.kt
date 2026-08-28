@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -144,18 +145,24 @@ fun AdminPanelScreen(
     )
   }
 
-  // 2. Add Announcement Dialog
+  // 2. Add Announcement Dialog (With Multiple Groups Scope Support)
   if (showAddAnnouncementDialog) {
     var titleText by remember { mutableStateOf("") }
     var contentText by remember { mutableStateOf("") }
-    var authorText by remember { mutableStateOf("إدارة الكلية") }
+    var authorText by remember { mutableStateOf("إدارة المدرسة العليا / الأستاذ") }
     var urgencyText by remember { mutableStateOf("عام") }
+    var visibilityScope by remember { mutableStateOf("عدة أفواج محددة") }
+    val availableGroups = listOf("الفوج 01", "الفوج 02", "الفوج 03", "الفوج 04")
+    val selectedGroups = remember { mutableStateListOf("الفوج 01", "الفوج 03") }
 
     AlertDialog(
       onDismissRequest = { showAddAnnouncementDialog = false },
-      title = { Text("نشر إعلان جامعي جديد", fontWeight = FontWeight.Black) },
+      title = { Text("نشر إعلان أكاديمي وتحديد نطاق الرؤية", fontWeight = FontWeight.Black) },
       text = {
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(
+          modifier = Modifier.fillMaxWidth(),
+          verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
           OutlinedTextField(
             value = titleText,
             onValueChange = { titleText = it },
@@ -166,15 +173,17 @@ fun AdminPanelScreen(
             value = contentText,
             onValueChange = { contentText = it },
             label = { Text("نص وتفاصيل الإعلان") },
-            maxLines = 4,
+            maxLines = 3,
             modifier = Modifier.fillMaxWidth()
           )
           OutlinedTextField(
             value = authorText,
             onValueChange = { authorText = it },
-            label = { Text("الجهة المصدرة (مثال: أ.د. بلقاسم المنصوري)") },
+            label = { Text("الجهة أو الأستاذ المصدر") },
             modifier = Modifier.fillMaxWidth()
           )
+
+          Text("درجة الأهمية:", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold))
           Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf("عام", "هام", "عاجل").forEach { urg ->
               FilterChip(
@@ -184,14 +193,82 @@ fun AdminPanelScreen(
               )
             }
           }
+
+          HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+          // Multiple Groups Visibility Scope
+          Text("نطاق الرؤية والأفواج المستهدفة:", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold))
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+          ) {
+            listOf("تخصص كامل", "عدة أفواج محددة", "فوج واحد").forEach { scope ->
+              FilterChip(
+                selected = visibilityScope == scope,
+                onClick = { visibilityScope = scope },
+                label = { Text(scope, fontSize = 11.sp) }
+              )
+            }
+          }
+
+          if (visibilityScope != "تخصص كامل") {
+            Text(
+              text = if (visibilityScope == "عدة أفواج محددة") "اختر الأفواج المعنية (اختيار متعدد):" else "اختر الفوج المعني:",
+              style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
+            )
+
+            Row(
+              modifier = Modifier.fillMaxWidth(),
+              horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+              availableGroups.forEach { group ->
+                val isSelected = selectedGroups.contains(group)
+                FilterChip(
+                  selected = isSelected,
+                  onClick = {
+                    if (visibilityScope == "فوج واحد") {
+                      selectedGroups.clear()
+                      selectedGroups.add(group)
+                    } else {
+                      if (isSelected) {
+                        if (selectedGroups.size > 1) selectedGroups.remove(group)
+                      } else {
+                        selectedGroups.add(group)
+                      }
+                    }
+                  },
+                  label = { Text(group, fontSize = 11.sp) },
+                  leadingIcon = if (isSelected) {
+                    { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp)) }
+                  } else null
+                )
+              }
+            }
+
+            Text(
+              text = "المستهدفون حالياً: ${selectedGroups.joinToString("، ")}",
+              style = MaterialTheme.typography.labelSmall.copy(
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold
+              )
+            )
+          }
         }
       },
       confirmButton = {
         Button(
           onClick = {
             if (titleText.isNotBlank()) {
-              viewModel.publishAnnouncement(titleText, contentText, authorText, urgencyText)
-              statusMessage = "تم نشر الإعلان فوراً لجميع الطلبة!"
+              val targetGroupsStr = if (visibilityScope == "تخصص كامل") "الكل" else selectedGroups.joinToString("، ")
+              viewModel.publishAnnouncement(
+                title = titleText,
+                content = contentText,
+                author = authorText,
+                urgency = urgencyText,
+                visibilityScope = visibilityScope,
+                targetGroups = targetGroupsStr
+              )
+              statusMessage = "تم نشر الإعلان بنطاق ($visibilityScope: $targetGroupsStr) بنجاح!"
             }
             showAddAnnouncementDialog = false
           }
@@ -432,7 +509,7 @@ fun AdminPanelScreen(
         AdminActionRow(
           title = "إضافة مقياس تعليمي جديد",
           description = "تحديد المعامل، عدد الأرصدة، واسم الأستاذ المشرف",
-          icon = Icons.Default.MenuBook,
+          icon = Icons.AutoMirrored.Filled.MenuBook,
           onClick = { showAddModuleDialog = true }
         )
 
