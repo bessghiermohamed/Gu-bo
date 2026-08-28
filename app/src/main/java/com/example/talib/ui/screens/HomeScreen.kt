@@ -179,105 +179,6 @@ fun HomeScreen(
       }
     }
 
-    // 1.5. 24/7 Firebase Genkit AI Assistant Card
-    item {
-      Card(
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-          containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f)
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
-        modifier = Modifier
-          .fillMaxWidth()
-          .padding(horizontal = 16.dp)
-          .clickable { onNavigate(ScreenRoute.AI_CHAT) }
-          .testTag("home_ai_assistant_card")
-      ) {
-        Row(
-          modifier = Modifier.padding(16.dp),
-          verticalAlignment = Alignment.CenterVertically,
-          horizontalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-          Box(
-            modifier = Modifier
-              .size(50.dp)
-              .clip(CircleShape)
-              .background(
-                Brush.linearGradient(
-                  listOf(
-                    MaterialTheme.colorScheme.primary,
-                    MaterialTheme.colorScheme.tertiary
-                  )
-                )
-              ),
-            contentAlignment = Alignment.Center
-          ) {
-            Icon(
-              imageVector = Icons.Default.AutoAwesome,
-              contentDescription = "AI",
-              tint = Color.White,
-              modifier = Modifier.size(26.dp)
-            )
-          }
-
-          Column(modifier = Modifier.weight(1f)) {
-            Row(
-              verticalAlignment = Alignment.CenterVertically,
-              horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-              Text(
-                text = "المساعد الأكاديمي الذكي 24/7",
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black)
-              )
-              Box(
-                modifier = Modifier
-                  .clip(RoundedCornerShape(6.dp))
-                  .background(MaterialTheme.colorScheme.primary)
-                  .padding(horizontal = 6.dp, vertical = 2.dp)
-              ) {
-                Text(
-                  text = "Genkit AI",
-                  style = MaterialTheme.typography.labelSmall.copy(
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 9.sp
-                  )
-                )
-              }
-            }
-
-            Spacer(modifier = Modifier.height(2.dp))
-
-            Text(
-              text = "دعم أكاديمي مباشر: شرح المحاضرات، حل تمارين الأعمال الموجهة TD، والتحضير للامتحانات.",
-              style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
-            )
-
-            Spacer(modifier = Modifier.height(6.dp))
-
-            Row(
-              verticalAlignment = Alignment.CenterVertically,
-              horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-              Text(
-                text = "اسأل المساعد الآن",
-                style = MaterialTheme.typography.labelSmall.copy(
-                  color = MaterialTheme.colorScheme.primary,
-                  fontWeight = FontWeight.Bold
-                )
-              )
-              Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(14.dp)
-              )
-            }
-          }
-        }
-      }
-    }
-
     // 1.6. Offline Room Database Cache Status Card
     item {
       Card(
@@ -466,7 +367,7 @@ fun HomeScreen(
           )
         }
 
-        // Row 5: ملفاتي وملاحظاتي + المساعد الذكي AI
+        // Row 5: ملفاتي وملاحظاتي + الخزنة المحلية
         Row(
           modifier = Modifier.fillMaxWidth(),
           horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -474,7 +375,7 @@ fun HomeScreen(
           GridActionCard(
             title = "ملفاتي وملاحظاتي",
             icon = Icons.Default.FolderSpecial,
-            badgeText = "محفوظاتي وملاحظاتي",
+            badgeText = "دفتر الملاحظات",
             isDarkMode = isDarkMode,
             delayOffsetMs = 250,
             onClick = { onNavigate(ScreenRoute.MY_FILES) },
@@ -482,12 +383,12 @@ fun HomeScreen(
           )
 
           GridActionCard(
-            title = "المساعد الذكي",
-            icon = Icons.Default.AutoAwesome,
-            badgeText = "Genkit AI 24/7",
+            title = "الخزنة المحلية",
+            icon = Icons.Default.CloudDone,
+            badgeText = "${cachedMaterials.size} ملفات أوفلاين",
             isDarkMode = isDarkMode,
             delayOffsetMs = 650,
-            onClick = { onNavigate(ScreenRoute.AI_CHAT) },
+            onClick = { onNavigate(ScreenRoute.OFFLINE_CACHE) },
             modifier = Modifier.weight(1f)
           )
         }
