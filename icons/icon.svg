@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1B5E4B" />
+      <stop offset="100%" stop-color="#0F172A" />
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FCD34D" />
+      <stop offset="100%" stop-color="#C8956C" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <!-- Background with rounded corners -->
+  <rect width="512" height="512" rx="115" fill="url(#bgGrad)" />
+  
+  <!-- Subtle decorative ring -->
+  <circle cx="256" cy="256" r="210" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="6" />
+
+  <g filter="url(#shadow)">
+    <!-- Mortarboard cap top diamond -->
+    <path d="M 256 120 L 430 200 L 256 280 L 82 200 Z" fill="url(#goldGrad)" />
+    
+    <!-- Cap skull base underneath -->
+    <path d="M 160 238 L 160 300 C 160 340 352 340 352 300 L 352 238 L 256 280 Z" fill="#E2E8F0" opacity="0.95" />
+    
+    <!-- Tassel dangling -->
+    <path d="M 390 220 L 390 320" stroke="#F59E0B" stroke-width="8" stroke-linecap="round" />
+    <circle cx="390" cy="328" r="14" fill="#F59E0B" />
+    
+    <!-- Open Book at bottom -->
+    <!-- Left page -->
+    <path d="M 256 320 C 220 295 160 295 110 305 L 110 405 C 160 395 220 395 256 420 Z" fill="#FFFFFF" />
+    <!-- Right page -->
+    <path d="M 256 320 C 292 295 352 295 402 305 L 402 405 C 352 395 292 395 256 420 Z" fill="#F1F5F9" />
+    <!-- Book Spine -->
+    <path d="M 256 320 L 256 420" stroke="#1B5E4B" stroke-width="5" stroke-linecap="round" />
+  </g>
+</svg>

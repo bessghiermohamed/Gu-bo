@@ -247,22 +247,54 @@ fun GradesScreen(
       }
     }
 
-    items(filteredGrades, key = { it.id }) { grade ->
-      val moduleAvg = (grade.continuousScore * 0.4) + (grade.examScore * 0.6)
-      val isPassed = moduleAvg >= 10.0
-
-      Card(
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        modifier = Modifier.fillMaxWidth()
-      ) {
-        Column(
-          modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-          verticalArrangement = Arrangement.spacedBy(8.dp)
+    if (filteredGrades.isEmpty()) {
+      item {
+        Card(
+          shape = RoundedCornerShape(18.dp),
+          colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+          modifier = Modifier.fillMaxWidth()
         ) {
+          Column(
+            modifier = Modifier
+              .fillMaxWidth()
+              .padding(32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+          ) {
+            Icon(
+              imageVector = Icons.Default.Equalizer,
+              contentDescription = null,
+              tint = MaterialTheme.colorScheme.onSurfaceVariant,
+              modifier = Modifier.size(44.dp)
+            )
+            Text(
+              text = "لا توجد علامات مسجلة حالياً",
+              style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
+            )
+            Text(
+              text = "يمكنك إضافة أو محاكاة نقاط المقاييس لحساب المعدل التقديري.",
+              style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
+            )
+          }
+        }
+      }
+    } else {
+      items(filteredGrades, key = { it.id }) { grade ->
+        val moduleAvg = (grade.continuousScore * 0.4) + (grade.examScore * 0.6)
+        val isPassed = moduleAvg >= 10.0
+
+        Card(
+          shape = RoundedCornerShape(18.dp),
+          colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+          elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+          modifier = Modifier.fillMaxWidth()
+        ) {
+          Column(
+            modifier = Modifier
+              .fillMaxWidth()
+              .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+          ) {
           Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -360,5 +392,6 @@ fun GradesScreen(
       }
     }
   }
+}
 }
 

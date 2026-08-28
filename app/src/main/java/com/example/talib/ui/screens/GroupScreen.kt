@@ -89,12 +89,12 @@ fun GroupScreen(
             horizontalArrangement = Arrangement.SpaceAround
           ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-              Text("عدد طلبة الفوج", style = MaterialTheme.typography.bodySmall)
-              Text("32 طالباً", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
+              Text("المسار الأكاديمي", style = MaterialTheme.typography.bodySmall)
+              Text(profile?.profileTrack ?: profile?.specialtyName ?: "غير محدد", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
             }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-              Text("مندوب الفوج", style = MaterialTheme.typography.bodySmall)
-              Text("أيمن حركات", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary))
+              Text("حالة الفوج", style = MaterialTheme.typography.bodySmall)
+              Text(profile?.groupNumber ?: "الفوج 01", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary))
             }
           }
         }
@@ -139,16 +139,12 @@ fun GroupScreen(
 
           Column(modifier = Modifier.weight(1f)) {
             Text(
-              text = "أيمن حركات (مندوب الفوج 03)",
+              text = "مندوب الفوج (${profile?.groupNumber ?: "الفوج الدراسي"})",
               style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
             )
             Text(
-              text = "البريد: aymen.delegue@univ-alger.dz",
+              text = "يتم تعيين المندوب ومسؤولي الفوج عبر إدارة الكلية أو منصة التنسيق.",
               style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
-            )
-            Text(
-              text = "مسؤول التواصل مع الأساتذة واستلام الغيابات والمبررات.",
-              style = MaterialTheme.typography.labelSmall.copy(color = MaterialTheme.colorScheme.primary)
             )
           }
         }
@@ -163,49 +159,82 @@ fun GroupScreen(
       )
     }
 
-    items(modules, key = { it.id }) { mod ->
-      Card(
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        modifier = Modifier.fillMaxWidth()
-      ) {
-        Row(
-          modifier = Modifier
-            .fillMaxWidth()
-            .padding(14.dp),
-          verticalAlignment = Alignment.CenterVertically,
-          horizontalArrangement = Arrangement.spacedBy(12.dp)
+    if (modules.isEmpty()) {
+      item {
+        Card(
+          shape = RoundedCornerShape(18.dp),
+          colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+          modifier = Modifier.fillMaxWidth()
         ) {
-          Box(
+          Column(
             modifier = Modifier
-              .size(42.dp)
-              .clip(CircleShape)
-              .background(MaterialTheme.colorScheme.surfaceVariant),
-            contentAlignment = Alignment.Center
+              .fillMaxWidth()
+              .padding(32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
           ) {
             Icon(
               imageVector = Icons.Default.School,
               contentDescription = null,
-              tint = MaterialTheme.colorScheme.primary,
-              modifier = Modifier.size(22.dp)
+              tint = MaterialTheme.colorScheme.onSurfaceVariant,
+              modifier = Modifier.size(44.dp)
             )
-          }
-
-          Column(modifier = Modifier.weight(1f)) {
             Text(
-              text = mod.professorName.ifEmpty { "أستاذ المقياس" },
+              text = "لا توجد معلومات هيئة تدريس مسجلة حالياً",
               style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
             )
             Text(
-              text = "مقياس: ${mod.name}",
+              text = "ستظهر قائمة الأساتذة فور إضافة المقاييس من لوحة الإدارة.",
               style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
             )
-            if (mod.professorEmail.isNotEmpty()) {
-              Text(
-                text = "البريد: ${mod.professorEmail}",
-                style = MaterialTheme.typography.labelSmall.copy(color = MaterialTheme.colorScheme.primary)
+          }
+        }
+      }
+    } else {
+      items(modules, key = { it.id }) { mod ->
+        Card(
+          shape = RoundedCornerShape(18.dp),
+          colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+          elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+          modifier = Modifier.fillMaxWidth()
+        ) {
+          Row(
+            modifier = Modifier
+              .fillMaxWidth()
+              .padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+          ) {
+            Box(
+              modifier = Modifier
+                .size(42.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceVariant),
+              contentAlignment = Alignment.Center
+            ) {
+              Icon(
+                imageVector = Icons.Default.School,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(22.dp)
               )
+            }
+
+            Column(modifier = Modifier.weight(1f)) {
+              Text(
+                text = mod.professorName.ifEmpty { "أستاذ المقياس" },
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
+              )
+              Text(
+                text = "مقياس: ${mod.name}",
+                style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
+              )
+              if (mod.professorEmail.isNotEmpty()) {
+                Text(
+                  text = "البريد: ${mod.professorEmail}",
+                  style = MaterialTheme.typography.labelSmall.copy(color = MaterialTheme.colorScheme.primary)
+                )
+              }
             }
           }
         }

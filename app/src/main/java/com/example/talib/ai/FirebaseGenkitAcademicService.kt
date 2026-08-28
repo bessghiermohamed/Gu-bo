@@ -11,9 +11,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 data class StudentAcademicContext(
-  val studentName: String = "طالب العلم",
-  val specialty: String = "الأدب العربي واللغات",
-  val academicYear: String = "السنة الثانية - ليسانس L2",
+  val studentName: String = "طالب",
+  val specialty: String = "",
+  val academicYear: String = "",
   val currentModules: List<String> = emptyList(),
   val upcomingExams: List<String> = emptyList()
 )
