@@ -239,12 +239,12 @@ fun CoursesScreen(
         ModuleCardItem(
           module = module,
           onOpenLectures = {
-            viewModel.recordModuleViewed(module)
+            viewModel.recordModuleViewed(module.id)
             viewModel.selectModule(module)
             onNavigate(ScreenRoute.LECTURES)
           },
           onCacheOffline = {
-            viewModel.cacheCourseContentForOffline(module.id)
+            viewModel.cacheCourseContentForOffline(module)
           }
         )
       }

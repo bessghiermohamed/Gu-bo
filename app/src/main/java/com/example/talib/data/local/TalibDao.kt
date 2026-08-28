@@ -113,7 +113,7 @@ interface TalibDao {
   suspend fun deleteScheduleItem(item: ScheduleItem)
 
   // Exams
-  @Query("SELECT * FROM exams ORDER BY examDate ASC")
+  @Query("SELECT * FROM exams ORDER BY examDate ASC, time ASC")
   fun getAllExams(): Flow<List<Exam>>
 
   @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -154,6 +154,9 @@ interface TalibDao {
   @Insert(onConflict = OnConflictStrategy.REPLACE)
   suspend fun insertAnnouncements(announcements: List<Announcement>)
 
+  @Update
+  suspend fun updateAnnouncement(announcement: Announcement)
+
   @Delete
   suspend fun deleteAnnouncement(announcement: Announcement)
 
@@ -167,13 +170,7 @@ interface TalibDao {
   @Update
   suspend fun updateStudentProfile(profile: StudentProfile)
 
-  // --- Offline Course Content Caching & Previously Viewed Tracking ---
-  @Query("UPDATE lectures SET lastViewedTimestamp = :timestamp, isCachedOffline = 1 WHERE id = :lectureId")
-  suspend fun markLectureAsViewed(lectureId: Long, timestamp: Long)
-
-  @Query("UPDATE modules SET lastViewedTimestamp = :timestamp, isCachedOffline = 1 WHERE id = :moduleId")
-  suspend fun markModuleAsViewed(moduleId: Long, timestamp: Long)
-
+  // Offline Caching & Previously Viewed Materials
   @Query("SELECT * FROM lectures WHERE lastViewedTimestamp > 0 ORDER BY lastViewedTimestamp DESC")
   fun getPreviouslyViewedLectures(): Flow<List<Lecture>>
 
@@ -182,10 +179,6 @@ interface TalibDao {
 
   @Query("SELECT * FROM lectures WHERE isCachedOffline = 1 OR isDownloaded = 1 ORDER BY weekNumber ASC")
   fun getOfflineAvailableLectures(): Flow<List<Lecture>>
-
-  // Cached Course Materials
-  @Query("SELECT * FROM cached_materials WHERE id = :id LIMIT 1")
-  suspend fun getCachedMaterialById(id: Long): CachedCourseMaterial?
 
   @Query("SELECT * FROM cached_materials ORDER BY lastViewedTimestamp DESC")
   fun getAllCachedMaterials(): Flow<List<CachedCourseMaterial>>
@@ -199,16 +192,22 @@ interface TalibDao {
   @Insert(onConflict = OnConflictStrategy.REPLACE)
   suspend fun insertCachedMaterials(materials: List<CachedCourseMaterial>)
 
-  @Query("UPDATE cached_materials SET lastViewedTimestamp = :timestamp WHERE id = :materialId")
-  suspend fun markCachedMaterialAsViewed(materialId: Long, timestamp: Long)
-
   @Delete
   suspend fun deleteCachedMaterial(material: CachedCourseMaterial)
 
   @Query("DELETE FROM cached_materials")
   suspend fun clearAllCachedMaterials()
 
-  // --- Student Personal Notes (ملفاتي) ---
+  @Query("UPDATE lectures SET lastViewedTimestamp = :timestamp, isCachedOffline = 1 WHERE id = :lectureId")
+  suspend fun markLectureAsViewed(lectureId: Long, timestamp: Long)
+
+  @Query("UPDATE modules SET lastViewedTimestamp = :timestamp, isCachedOffline = 1 WHERE id = :moduleId")
+  suspend fun markModuleAsViewed(moduleId: Long, timestamp: Long)
+
+  @Query("UPDATE cached_materials SET lastViewedTimestamp = :timestamp WHERE id = :materialId")
+  suspend fun markCachedMaterialAsViewed(materialId: Long, timestamp: Long)
+
+  // Notes
   @Query("SELECT * FROM student_notes ORDER BY id DESC")
   fun getAllNotes(): Flow<List<StudentNote>>
 
@@ -218,20 +217,99 @@ interface TalibDao {
   @Delete
   suspend fun deleteNote(note: StudentNote)
 
-  // --- State Updates ---
   @Query("UPDATE lectures SET isRead = :isRead WHERE id = :lectureId")
   suspend fun updateLectureReadStatus(lectureId: Long, isRead: Boolean)
 
   @Query("UPDATE lectures SET isBookmarked = :isBookmarked WHERE id = :lectureId")
   suspend fun updateLectureBookmarkStatus(lectureId: Long, isBookmarked: Boolean)
 
-  @Query("UPDATE announcements SET isRead = :isRead WHERE id = :announcementId")
-  suspend fun updateAnnouncementReadStatus(announcementId: Long, isRead: Boolean)
+  @Query("UPDATE lectures SET isDownloaded = :isDownloaded WHERE id = :lectureId")
+  suspend fun updateLectureDownloadStatus(lectureId: Long, isDownloaded: Boolean)
 
-  @Query("UPDATE grades SET isOfficial = :isOfficial WHERE id = :gradeId")
-  suspend fun updateGradeOfficialStatus(gradeId: Long, isOfficial: Boolean)
+  // 1. Library References (المكتبة والمراجع العامة)
+  @Query("SELECT * FROM library_references ORDER BY id DESC")
+  fun getAllLibraryReferences(): Flow<List<LibraryReference>>
 
-  @Query("UPDATE grades SET targetScore = :targetScore WHERE id = :gradeId")
-  suspend fun updateGradeTargetScore(gradeId: Long, targetScore: Double)
+  @Insert(onConflict = OnConflictStrategy.REPLACE)
+  suspend fun insertLibraryReference(reference: LibraryReference): Long
+
+  @Insert(onConflict = OnConflictStrategy.REPLACE)
+  suspend fun insertLibraryReferences(references: List<LibraryReference>)
+
+  @Delete
+  suspend fun deleteLibraryReference(reference: LibraryReference)
+
+  // 2. Academic Calendar Events (التقويم الأكاديمي)
+  @Query("SELECT * FROM academic_calendar_events ORDER BY id ASC")
+  fun getAllCalendarEvents(): Flow<List<AcademicCalendarEvent>>
+
+  @Insert(onConflict = OnConflictStrategy.REPLACE)
+  suspend fun insertCalendarEvent(event: AcademicCalendarEvent): Long
+
+  @Insert(onConflict = OnConflictStrategy.REPLACE)
+  suspend fun insertCalendarEvents(events: List<AcademicCalendarEvent>)
+
+  @Delete
+  suspend fun deleteCalendarEvent(event: AcademicCalendarEvent)
+
+  // 3. Attendance Records (سجل الحضور والغياب)
+  @Query("SELECT * FROM attendance_records ORDER BY id DESC")
+  fun getAllAttendanceRecords(): Flow<List<AttendanceRecord>>
+
+  @Insert(onConflict = OnConflictStrategy.REPLACE)
+  suspend fun insertAttendanceRecord(record: AttendanceRecord): Long
+
+  @Insert(onConflict = OnConflictStrategy.REPLACE)
+  suspend fun insertAttendanceRecords(records: List<AttendanceRecord>)
+
+  @Delete
+  suspend fun deleteAttendanceRecord(record: AttendanceRecord)
+
+  // 4. Student Issue Reports (التبليغات والشكاوى)
+  @Query("SELECT * FROM student_issue_reports ORDER BY id DESC")
+  fun getAllIssueReports(): Flow<List<StudentIssueReport>>
+
+  @Insert(onConflict = OnConflictStrategy.REPLACE)
+  suspend fun insertIssueReport(report: StudentIssueReport): Long
+
+  @Insert(onConflict = OnConflictStrategy.REPLACE)
+  suspend fun insertIssueReports(reports: List<StudentIssueReport>)
+
+  @Update
+  suspend fun updateIssueReport(report: StudentIssueReport)
+
+  @Delete
+  suspend fun deleteIssueReport(report: StudentIssueReport)
+
+  // 5. Class Polls (استطلاعات الرأي والتصويت)
+  @Query("SELECT * FROM class_polls ORDER BY id DESC")
+  fun getAllPolls(): Flow<List<ClassPoll>>
+
+  @Insert(onConflict = OnConflictStrategy.REPLACE)
+  suspend fun insertPoll(poll: ClassPoll): Long
+
+  @Insert(onConflict = OnConflictStrategy.REPLACE)
+  suspend fun insertPolls(polls: List<ClassPoll>)
+
+  @Update
+  suspend fun updatePoll(poll: ClassPoll)
+
+  @Delete
+  suspend fun deletePoll(poll: ClassPoll)
+
+  // 6. App Users & Role Management (المستخدمون والرتب)
+  @Query("SELECT * FROM app_users ORDER BY id ASC")
+  fun getAllUsers(): Flow<List<AppUser>>
+
+  @Insert(onConflict = OnConflictStrategy.REPLACE)
+  suspend fun insertUser(user: AppUser): Long
+
+  @Insert(onConflict = OnConflictStrategy.REPLACE)
+  suspend fun insertUsers(users: List<AppUser>)
+
+  @Update
+  suspend fun updateUser(user: AppUser)
+
+  @Delete
+  suspend fun deleteUser(user: AppUser)
 }
-

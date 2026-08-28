@@ -34,6 +34,47 @@ class TalibViewModel(application: Application) : AndroidViewModel(application) {
     _isAcademicTheme.value = !_isAcademicTheme.value
   }
 
+  // Search Query for Courses
+  private val _searchQuery = MutableStateFlow("")
+  val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
+  fun updateSearchQuery(query: String) {
+    _searchQuery.value = query
+  }
+
+  // Schedule selected day
+  private val _selectedScheduleDay = MutableStateFlow(1) // 1=الأحد
+  val selectedScheduleDay: StateFlow<Int> = _selectedScheduleDay.asStateFlow()
+
+  fun selectScheduleDay(day: Int) {
+    _selectedScheduleDay.value = day
+  }
+
+  // Active PDF Viewer state
+  private val _activePdfLecture = MutableStateFlow<Lecture?>(null)
+  val activePdfLecture: StateFlow<Lecture?> = _activePdfLecture.asStateFlow()
+
+  fun openPdfViewer(lecture: Lecture) {
+    _activePdfLecture.value = lecture
+    markLectureAsViewed(lecture.id)
+  }
+
+  fun closePdfViewer() {
+    _activePdfLecture.value = null
+  }
+
+  // Active Cached Material Reader
+  private val _selectedCachedMaterial = MutableStateFlow<CachedCourseMaterial?>(null)
+  val selectedCachedMaterial: StateFlow<CachedCourseMaterial?> = _selectedCachedMaterial.asStateFlow()
+
+  fun openCachedMaterial(material: CachedCourseMaterial) {
+    _selectedCachedMaterial.value = material
+  }
+
+  fun closeCachedMaterial() {
+    _selectedCachedMaterial.value = null
+  }
+
   // Student Notes (ملفاتي)
   val allNotes: StateFlow<List<StudentNote>> = repository.allNotes
     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -58,11 +99,11 @@ class TalibViewModel(application: Application) : AndroidViewModel(application) {
     }
   }
 
-  // Global Loading State for Backend & Course Content Fetching
+  // Global Loading State
   private val _isLoading = MutableStateFlow(false)
   val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
-  private val _loadingMessage = MutableStateFlow<String?>("جاري مزامنة المحتوى الأكاديمي...")
+  private val _loadingMessage = MutableStateFlow<String?>("جاري معالجة البيانات...")
   val loadingMessage: StateFlow<String?> = _loadingMessage.asStateFlow()
 
   fun setLoading(loading: Boolean, message: String? = null) {
@@ -70,12 +111,11 @@ class TalibViewModel(application: Application) : AndroidViewModel(application) {
     _isLoading.value = loading
   }
 
-  fun refreshCourseContent(message: String = "جاري جلب المقررات والمحاضرات من الخادم...") {
+  fun refreshCourseContent(message: String = "جاري مزامنة المحتوى الأكاديمي...") {
     viewModelScope.launch {
       _loadingMessage.value = message
       _isLoading.value = true
-      // Simulate asynchronous network roundtrip to academic backend
-      kotlinx.coroutines.delay(1000)
+      kotlinx.coroutines.delay(800)
       _isLoading.value = false
     }
   }
@@ -110,14 +150,14 @@ class TalibViewModel(application: Application) : AndroidViewModel(application) {
   fun selectSpecialty(specialtyId: Long) {
     if (_selectedSpecialtyId.value != specialtyId) {
       _selectedSpecialtyId.value = specialtyId
-      refreshCourseContent("جاري جلب مقررات التخصص من الخادم...")
+      refreshCourseContent("جاري تحميل بيانات التخصص...")
     }
   }
 
   fun selectYear(yearId: Long) {
     if (_selectedYearId.value != yearId) {
       _selectedYearId.value = yearId
-      refreshCourseContent("جاري تحميل مقررات السنة الدراسية...")
+      refreshCourseContent("جاري تحميل مقررات السنة...")
     }
   }
 
@@ -126,7 +166,7 @@ class TalibViewModel(application: Application) : AndroidViewModel(application) {
     .flatMapLatest { specId -> repository.getYearsForSpecialty(specId) }
     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-  // Modules for selected specialty and year
+  // Modules for student closed track
   val currentModules: StateFlow<List<ModuleCourse>> = combine(
     _selectedSpecialtyId,
     _selectedYearId
@@ -139,7 +179,6 @@ class TalibViewModel(application: Application) : AndroidViewModel(application) {
   val allModules: StateFlow<List<ModuleCourse>> = repository.allModules
     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-  // Selected Module for details
   private val _selectedModule = MutableStateFlow<ModuleCourse?>(null)
   val selectedModule: StateFlow<ModuleCourse?> = _selectedModule.asStateFlow()
 
@@ -163,27 +202,7 @@ class TalibViewModel(application: Application) : AndroidViewModel(application) {
   val bookmarkedLectures: StateFlow<List<Lecture>> = repository.bookmarkedLectures
     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-  // Active PDF reading modal
-  private val _activePdfLecture = MutableStateFlow<Lecture?>(null)
-  val activePdfLecture: StateFlow<Lecture?> = _activePdfLecture.asStateFlow()
-
-  fun openPdfViewer(lecture: Lecture) {
-    _activePdfLecture.value = lecture
-    recordLectureViewed(lecture)
-  }
-
-  fun closePdfViewer() {
-    _activePdfLecture.value = null
-  }
-
-  // --- Offline Mode & Room Database Course Caching ---
-  private val _isOfflineMode = MutableStateFlow(false)
-  val isOfflineMode: StateFlow<Boolean> = _isOfflineMode.asStateFlow()
-
-  fun toggleOfflineMode() {
-    _isOfflineMode.value = !_isOfflineMode.value
-  }
-
+  // Offline Caching
   val previouslyViewedLectures: StateFlow<List<Lecture>> = repository.previouslyViewedLectures
     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
@@ -196,42 +215,68 @@ class TalibViewModel(application: Application) : AndroidViewModel(application) {
   val allCachedMaterials: StateFlow<List<CachedCourseMaterial>> = repository.allCachedMaterials
     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-  private val _selectedCachedMaterial = MutableStateFlow<CachedCourseMaterial?>(null)
-  val selectedCachedMaterial: StateFlow<CachedCourseMaterial?> = _selectedCachedMaterial.asStateFlow()
+  private val _isOfflineMode = MutableStateFlow(false)
+  val isOfflineMode: StateFlow<Boolean> = _isOfflineMode.asStateFlow()
 
-  fun openCachedMaterial(material: CachedCourseMaterial) {
-    _selectedCachedMaterial.value = material
-    recordMaterialViewed(material)
+  fun toggleOfflineMode() {
+    _isOfflineMode.value = !_isOfflineMode.value
   }
 
-  fun closeCachedMaterial() {
-    _selectedCachedMaterial.value = null
+  fun recordModuleViewed(moduleId: Long) {
+    markModuleAsViewed(moduleId)
   }
 
-  fun recordLectureViewed(lecture: Lecture) {
+  fun markLectureAsViewed(lectureId: Long) {
     viewModelScope.launch(Dispatchers.IO) {
-      repository.markLectureAsViewed(lecture.id, System.currentTimeMillis())
+      repository.markLectureAsViewed(lectureId)
     }
   }
 
-  fun recordModuleViewed(module: ModuleCourse) {
+  fun markModuleAsViewed(moduleId: Long) {
     viewModelScope.launch(Dispatchers.IO) {
-      repository.markModuleAsViewed(module.id, System.currentTimeMillis())
+      repository.markModuleAsViewed(moduleId)
     }
   }
 
-  fun recordMaterialViewed(material: CachedCourseMaterial) {
+  fun cacheCourseContentForOffline(module: ModuleCourse) {
     viewModelScope.launch(Dispatchers.IO) {
-      repository.markCachedMaterialAsViewed(material.id, System.currentTimeMillis())
+      val cached = CachedCourseMaterial(
+        moduleId = module.id,
+        moduleName = module.name,
+        title = "مقرر ${module.name} الكامل",
+        materialType = "مقرر شامل",
+        summary = module.description,
+        fullText = "المحتوى الأكاديمي لمقياس ${module.name} تحت إشراف الأستاذ: ${module.professorName}. المعامل: ${module.coefficient}، الرصيد: ${module.credits}.",
+        keyConcepts = "محاضرات، ملخصات، مراجع، تمارين تطبيقية",
+        cachedDate = "محفوظ في الذاكرة",
+        lastViewedTimestamp = System.currentTimeMillis()
+      )
+      repository.insertCachedMaterial(cached)
     }
   }
 
-  fun cacheCourseContentForOffline(moduleId: Long) {
+  fun saveMaterialOffline(
+    moduleId: Long,
+    moduleName: String,
+    title: String,
+    type: String,
+    summary: String,
+    fullText: String,
+    keyConcepts: String = ""
+  ) {
     viewModelScope.launch(Dispatchers.IO) {
-      setLoading(true, "جاري تحميل وتخزين المقرر في قاعدة الذاكرة المحلية (Room Database)...")
-      repository.markModuleAsViewed(moduleId, System.currentTimeMillis())
-      kotlinx.coroutines.delay(800)
-      setLoading(false)
+      val cached = CachedCourseMaterial(
+        moduleId = moduleId,
+        moduleName = moduleName,
+        title = title,
+        materialType = type,
+        summary = summary,
+        fullText = fullText,
+        keyConcepts = keyConcepts,
+        cachedDate = "تم الحفظ محلياً",
+        lastViewedTimestamp = System.currentTimeMillis()
+      )
+      repository.insertCachedMaterial(cached)
     }
   }
 
@@ -241,11 +286,45 @@ class TalibViewModel(application: Application) : AndroidViewModel(application) {
     }
   }
 
+  fun clearAllCachedMaterials() {
+    viewModelScope.launch(Dispatchers.IO) {
+      repository.clearAllCachedMaterials()
+    }
+  }
+
+  fun toggleBookmark(lecture: Lecture) {
+    viewModelScope.launch(Dispatchers.IO) {
+      repository.updateLectureBookmarkStatus(lecture.id, !lecture.isBookmarked)
+    }
+  }
+
+  fun toggleRead(lecture: Lecture) {
+    viewModelScope.launch(Dispatchers.IO) {
+      repository.updateLectureReadStatus(lecture.id, !lecture.isRead)
+    }
+  }
+
+  fun toggleLectureRead(lecture: Lecture) {
+    toggleRead(lecture)
+  }
+
+  fun toggleDownloaded(lecture: Lecture) {
+    viewModelScope.launch(Dispatchers.IO) {
+      repository.updateLectureDownloadStatus(lecture.id, !lecture.isDownloaded)
+    }
+  }
+
   // Assignments
   val allAssignments: StateFlow<List<Assignment>> = repository.allAssignments
     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-  // Timetable Schedules
+  fun toggleAssignment(assignment: Assignment) {
+    viewModelScope.launch(Dispatchers.IO) {
+      repository.updateAssignment(assignment.copy(isCompleted = !assignment.isCompleted))
+    }
+  }
+
+  // Schedules
   val currentSchedule: StateFlow<List<ScheduleItem>> = combine(
     _selectedSpecialtyId,
     _selectedYearId
@@ -255,100 +334,321 @@ class TalibViewModel(application: Application) : AndroidViewModel(application) {
     repository.getScheduleForSpecialty(specId, yrId)
   }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-  // Selected Day of Week in Schedule (1 = Sunday ... 5 = Thursday)
-  private val _selectedScheduleDay = MutableStateFlow(1)
-  val selectedScheduleDay: StateFlow<Int> = _selectedScheduleDay.asStateFlow()
-
-  fun selectScheduleDay(day: Int) {
-    _selectedScheduleDay.value = day
-  }
+  val allScheduleItems: StateFlow<List<ScheduleItem>> = repository.allScheduleItems
+    .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
   // Exams
   val allExams: StateFlow<List<Exam>> = repository.allExams
     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-  // Grades & GPA
+  // Grades & GPA Calculation
   val allGrades: StateFlow<List<StudentGrade>> = repository.allGrades
     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-  val calculatedGPA: StateFlow<Double> = allGrades.map { gradeList ->
-    if (gradeList.isEmpty()) 0.0
+  val calculatedGPA: StateFlow<Double> = allGrades.map { gradesList ->
+    if (gradesList.isEmpty()) 0.0
     else {
-      var totalPoints = 0.0
       var totalCoeff = 0.0
-      for (grade in gradeList) {
-        val moduleAverage = (grade.continuousScore * 0.4) + (grade.examScore * 0.6)
-        totalPoints += (moduleAverage * grade.coefficient)
-        totalCoeff += grade.coefficient
+      var weightedSum = 0.0
+      gradesList.forEach { g ->
+        val modAvg = (g.continuousScore * 0.4) + (g.examScore * 0.6)
+        weightedSum += (modAvg * g.coefficient)
+        totalCoeff += g.coefficient
       }
-      if (totalCoeff > 0) totalPoints / totalCoeff else 0.0
+      if (totalCoeff > 0) Math.round((weightedSum / totalCoeff) * 100.0) / 100.0 else 0.0
     }
   }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.0)
 
-  // Announcements
-  val allAnnouncements: StateFlow<List<Announcement>> = repository.allAnnouncements
-    .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-  // Search Filter
-  private val _searchQuery = MutableStateFlow("")
-  val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
-
-  fun updateSearchQuery(query: String) {
-    _searchQuery.value = query
-  }
-
-  // User Actions
-  fun toggleBookmark(lecture: Lecture) {
+  fun addGrade(
+    moduleId: Long,
+    moduleName: String,
+    continuousScore: Double,
+    examScore: Double,
+    coefficient: Double,
+    credits: Int
+  ) {
     viewModelScope.launch(Dispatchers.IO) {
-      repository.updateLectureBookmarkStatus(lecture.id, !lecture.isBookmarked)
+      repository.insertGrade(
+        StudentGrade(
+          moduleId = moduleId,
+          moduleName = moduleName,
+          continuousScore = continuousScore,
+          examScore = examScore,
+          coefficient = coefficient,
+          credits = credits,
+          isOfficial = false
+        )
+      )
     }
   }
 
-  fun toggleLectureRead(lecture: Lecture) {
+  fun updateGrade(grade: StudentGrade) {
     viewModelScope.launch(Dispatchers.IO) {
-      repository.updateLectureReadStatus(lecture.id, !lecture.isRead)
+      repository.updateGrade(grade)
     }
   }
 
-  fun toggleDownloaded(lecture: Lecture) {
+  fun updateGradeScore(grade: StudentGrade, continuous: Double, exam: Double) {
     viewModelScope.launch(Dispatchers.IO) {
-      repository.updateLecture(lecture.copy(isDownloaded = !lecture.isDownloaded))
-    }
-  }
-
-  fun toggleAssignment(assignment: Assignment) {
-    viewModelScope.launch(Dispatchers.IO) {
-      repository.updateAssignment(assignment.copy(isCompleted = !assignment.isCompleted))
-    }
-  }
-
-  fun toggleAnnouncementRead(announcement: Announcement) {
-    viewModelScope.launch(Dispatchers.IO) {
-      repository.updateAnnouncementReadStatus(announcement.id, !announcement.isRead)
+      repository.updateGrade(grade.copy(continuousScore = continuous, examScore = exam))
     }
   }
 
   fun toggleGradeOfficial(grade: StudentGrade) {
     viewModelScope.launch(Dispatchers.IO) {
-      repository.updateGradeOfficialStatus(grade.id, !grade.isOfficial)
+      repository.updateGrade(grade.copy(isOfficial = !grade.isOfficial))
     }
   }
 
-  fun updateGradeTarget(grade: StudentGrade, targetScore: Double) {
+  fun updateGradeTarget(grade: StudentGrade, target: Double) {
     viewModelScope.launch(Dispatchers.IO) {
-      repository.updateGradeTargetScore(grade.id, targetScore)
+      repository.updateGrade(grade.copy(targetScore = target))
     }
   }
 
-  fun updateGradeScore(grade: StudentGrade, continuousScore: Double, examScore: Double) {
+  fun deleteGrade(grade: StudentGrade) {
     viewModelScope.launch(Dispatchers.IO) {
-      repository.updateGrade(grade.copy(continuousScore = continuousScore, examScore = examScore))
+      repository.deleteGrade(grade)
     }
   }
 
-  fun updateProfile(profile: StudentProfile) {
+  // Announcements
+  val allAnnouncements: StateFlow<List<Announcement>> = repository.allAnnouncements
+    .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+  fun toggleAnnouncementRead(announcement: Announcement) {
     viewModelScope.launch(Dispatchers.IO) {
-      repository.updateStudentProfile(profile)
+      repository.updateAnnouncement(announcement.copy(isRead = !announcement.isRead))
+    }
+  }
+
+  // 1. Library References (المكتبة والمراجع العامة)
+  val allLibraryReferences: StateFlow<List<LibraryReference>> = repository.allLibraryReferences
+    .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+  fun addLibraryReference(
+    title: String,
+    author: String,
+    category: String,
+    description: String,
+    pageCount: Int = 200,
+    visibilityScope: String = "تخصص كامل"
+  ) {
+    viewModelScope.launch(Dispatchers.IO) {
+      repository.insertLibraryReference(
+        LibraryReference(
+          specialtyId = _selectedSpecialtyId.value,
+          title = title,
+          author = author,
+          category = category,
+          description = description,
+          pageCount = pageCount,
+          visibilityScope = visibilityScope
+        )
+      )
+    }
+  }
+
+  fun deleteLibraryReference(reference: LibraryReference) {
+    viewModelScope.launch(Dispatchers.IO) {
+      repository.deleteLibraryReference(reference)
+    }
+  }
+
+  // 2. Academic Calendar Events (التقويم الأكاديمي)
+  val allCalendarEvents: StateFlow<List<AcademicCalendarEvent>> = repository.allCalendarEvents
+    .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+  fun addCalendarEvent(
+    title: String,
+    eventType: String,
+    startDate: String,
+    endDate: String,
+    description: String
+  ) {
+    viewModelScope.launch(Dispatchers.IO) {
+      repository.insertCalendarEvent(
+        AcademicCalendarEvent(
+          title = title,
+          eventType = eventType,
+          startDate = startDate,
+          endDate = endDate,
+          description = description
+        )
+      )
+    }
+  }
+
+  fun deleteCalendarEvent(event: AcademicCalendarEvent) {
+    viewModelScope.launch(Dispatchers.IO) {
+      repository.deleteCalendarEvent(event)
+    }
+  }
+
+  // 3. Attendance Records (سجل الحضور والغيابات)
+  val allAttendanceRecords: StateFlow<List<AttendanceRecord>> = repository.allAttendanceRecords
+    .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+  fun recordAttendance(
+    moduleName: String,
+    sessionType: String,
+    date: String,
+    status: String,
+    reason: String = "",
+    maxAllowed: Int = 3
+  ) {
+    viewModelScope.launch(Dispatchers.IO) {
+      repository.insertAttendanceRecord(
+        AttendanceRecord(
+          moduleName = moduleName,
+          sessionType = sessionType,
+          date = date,
+          status = status,
+          reason = reason,
+          maxAllowedAbsences = maxAllowed
+        )
+      )
+    }
+  }
+
+  fun deleteAttendanceRecord(record: AttendanceRecord) {
+    viewModelScope.launch(Dispatchers.IO) {
+      repository.deleteAttendanceRecord(record)
+    }
+  }
+
+  // 4. Student Issue Reports (التبليغات)
+  val allIssueReports: StateFlow<List<StudentIssueReport>> = repository.allIssueReports
+    .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+  fun reportIssue(
+    itemType: String,
+    itemTitle: String,
+    description: String
+  ) {
+    val prof = studentProfile.value
+    viewModelScope.launch(Dispatchers.IO) {
+      repository.insertIssueReport(
+        StudentIssueReport(
+          studentName = prof?.fullName ?: "طالب",
+          studentGroup = prof?.groupNumber ?: "الفوج 03",
+          itemType = itemType,
+          itemTitle = itemTitle,
+          description = description,
+          date = "اليوم",
+          status = "قيد المراجعة"
+        )
+      )
+    }
+  }
+
+  fun updateIssueReportStatus(report: StudentIssueReport, newStatus: String, note: String = "") {
+    viewModelScope.launch(Dispatchers.IO) {
+      repository.updateIssueReport(
+        report.copy(status = newStatus, representativeNote = note)
+      )
+    }
+  }
+
+  fun deleteIssueReport(report: StudentIssueReport) {
+    viewModelScope.launch(Dispatchers.IO) {
+      repository.deleteIssueReport(report)
+    }
+  }
+
+  // 5. Class Polls (استطلاعات الرأي)
+  val allPolls: StateFlow<List<ClassPoll>> = repository.allPolls
+    .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+  fun createPoll(
+    question: String,
+    optionA: String,
+    optionB: String,
+    optionC: String = "",
+    targetGroup: String = "الفوج 03"
+  ) {
+    val prof = studentProfile.value
+    viewModelScope.launch(Dispatchers.IO) {
+      repository.insertPoll(
+        ClassPoll(
+          creatorName = "${prof?.userRole ?: "طالب"}: ${prof?.fullName ?: "أمين"}",
+          question = question,
+          optionA = optionA,
+          optionB = optionB,
+          optionC = optionC,
+          targetGroup = targetGroup,
+          createdAt = "اليوم"
+        )
+      )
+    }
+  }
+
+  fun voteOnPoll(poll: ClassPoll, selectedOption: String) {
+    if (poll.userVotedOption != null) return // Already voted
+    viewModelScope.launch(Dispatchers.IO) {
+      val updated = when (selectedOption) {
+        poll.optionA -> poll.copy(votesA = poll.votesA + 1, userVotedOption = selectedOption)
+        poll.optionB -> poll.copy(votesB = poll.votesB + 1, userVotedOption = selectedOption)
+        poll.optionC -> poll.copy(votesC = poll.votesC + 1, userVotedOption = selectedOption)
+        else -> poll
+      }
+      repository.updatePoll(updated)
+    }
+  }
+
+  fun deletePoll(poll: ClassPoll) {
+    viewModelScope.launch(Dispatchers.IO) {
+      repository.deletePoll(poll)
+    }
+  }
+
+  // 6. App Users & Role Management (المالك ومسؤول التخصص والممثلين)
+  val allUsers: StateFlow<List<AppUser>> = repository.allUsers
+    .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+  fun updateUserRole(userId: Long, newRole: String, newScope: String = "فوج واحد") {
+    viewModelScope.launch(Dispatchers.IO) {
+      val users = repository.allUsers.first()
+      val target = users.find { it.id == userId }
+      if (target != null) {
+        repository.updateUser(target.copy(role = newRole, representativeScope = newScope))
+      }
+    }
+  }
+
+  fun addUser(
+    fullName: String,
+    email: String,
+    studentId: String,
+    groupNumber: String,
+    role: String = "STUDENT"
+  ) {
+    val prof = studentProfile.value
+    viewModelScope.launch(Dispatchers.IO) {
+      repository.insertUser(
+        AppUser(
+          fullName = fullName,
+          email = email,
+          studentId = studentId,
+          specialtyName = prof?.specialtyName ?: "اللغة والأدب العربي",
+          yearName = prof?.academicYearName ?: "السنة الثانية (L2)",
+          groupNumber = groupNumber,
+          role = role
+        )
+      )
+    }
+  }
+
+  fun deleteUser(user: AppUser) {
+    viewModelScope.launch(Dispatchers.IO) {
+      repository.deleteUser(user)
+    }
+  }
+
+  // Profile & Academic Path Configuration
+  fun updateProfile(updatedProfile: StudentProfile) {
+    viewModelScope.launch(Dispatchers.IO) {
+      repository.updateStudentProfile(updatedProfile)
     }
   }
 
@@ -361,87 +661,54 @@ class TalibViewModel(application: Application) : AndroidViewModel(application) {
     groupNumber: String
   ) {
     viewModelScope.launch(Dispatchers.IO) {
-      val current = studentProfile.value
-      if (current != null) {
-        repository.updateStudentProfile(
-          current.copy(
-            institution = institution,
-            university = institution,
-            specialtyName = specialtyName,
-            profileTrack = profileTrack,
-            academicYearName = yearName,
-            semesterName = semesterName,
-            groupNumber = groupNumber
-          )
-        )
-      }
-    }
-  }
-
-  fun updateUserRole(role: String) {
-    viewModelScope.launch(Dispatchers.IO) {
-      val current = studentProfile.value
-      if (current != null) {
-        repository.updateStudentProfile(
-          current.copy(
-            userRole = role,
-            isAdminMode = role != "STUDENT"
-          )
-        )
-      }
-    }
-  }
-
-
-  // ADMIN / PROFESSOR ACTIONS
-  fun addSpecialty(nameAr: String, code: String, desc: String) {
-    viewModelScope.launch(Dispatchers.IO) {
-      val newId = repository.insertSpecialty(
-        Specialty(nameAr = nameAr, code = code, description = desc)
+      val current = repository.studentProfile.first()
+      val updated = (current ?: StudentProfile()).copy(
+        institution = institution,
+        university = institution,
+        specialtyName = specialtyName,
+        profileTrack = profileTrack,
+        academicYearName = yearName,
+        semesterName = semesterName,
+        groupNumber = groupNumber,
+        isConfigured = true
       )
-      // Add default years L1, L2, L3 for the new specialty
-      repository.insertAcademicYear(AcademicYear(specialtyId = newId, yearName = "السنة الأولى (L1)", semester = 1))
-      repository.insertAcademicYear(AcademicYear(specialtyId = newId, yearName = "السنة الثانية (L2)", semester = 1))
-      repository.insertAcademicYear(AcademicYear(specialtyId = newId, yearName = "السنة الثالثة (L3)", semester = 1))
+      repository.updateStudentProfile(updated)
     }
   }
 
+  fun switchUserRole(role: String) {
+    viewModelScope.launch(Dispatchers.IO) {
+      val current = repository.studentProfile.first() ?: return@launch
+      repository.updateStudentProfile(current.copy(userRole = role))
+    }
+  }
+
+  // Unified Admin Creation Actions with Visibility Scopes
   fun addModule(
-    specialtyId: Long,
-    yearId: Long,
     name: String,
     code: String,
     coefficient: Double,
     credits: Int,
     professorName: String,
-    professorEmail: String,
     category: String,
-    description: String
+    description: String,
+    visibilityScope: String = "تخصص كامل",
+    targetGroup: String = "الكل"
   ) {
     viewModelScope.launch(Dispatchers.IO) {
-      val modId = repository.insertModule(
+      repository.insertModule(
         ModuleCourse(
-          specialtyId = specialtyId,
-          academicYearId = yearId,
+          specialtyId = _selectedSpecialtyId.value,
+          academicYearId = _selectedYearId.value,
           name = name,
           code = code,
           coefficient = coefficient,
           credits = credits,
           professorName = professorName,
-          professorEmail = professorEmail,
           category = category,
-          description = description
-        )
-      )
-      // Also add empty grade tracker entry
-      repository.insertGrade(
-        StudentGrade(
-          moduleId = modId,
-          moduleName = name,
-          continuousScore = 12.0,
-          examScore = 12.0,
-          coefficient = coefficient,
-          credits = credits
+          description = description,
+          visibilityScope = visibilityScope,
+          targetGroup = targetGroup
         )
       )
     }
@@ -453,7 +720,9 @@ class TalibViewModel(application: Application) : AndroidViewModel(application) {
     title: String,
     summary: String,
     pdfFileName: String,
-    durationMinutes: Int
+    durationMinutes: Int,
+    visibilityScope: String = "تخصص كامل",
+    targetGroup: String = "الكل"
   ) {
     viewModelScope.launch(Dispatchers.IO) {
       repository.insertLecture(
@@ -465,7 +734,9 @@ class TalibViewModel(application: Application) : AndroidViewModel(application) {
           pdfFileName = if (pdfFileName.endsWith(".pdf")) pdfFileName else "$pdfFileName.pdf",
           pdfUrl = "https://talib.edu/pdf/$pdfFileName",
           durationMinutes = durationMinutes,
-          date = "اليوم"
+          date = "اليوم",
+          visibilityScope = visibilityScope,
+          targetGroup = targetGroup
         )
       )
     }
@@ -502,7 +773,9 @@ class TalibViewModel(application: Application) : AndroidViewModel(application) {
     moduleName: String,
     type: String,
     room: String,
-    professor: String
+    professor: String,
+    visibilityScope: String = "تخصص كامل",
+    targetGroup: String = "الفوج 03"
   ) {
     viewModelScope.launch(Dispatchers.IO) {
       repository.insertScheduleItem(
@@ -515,7 +788,9 @@ class TalibViewModel(application: Application) : AndroidViewModel(application) {
           moduleName = moduleName,
           type = type,
           room = room,
-          professor = professor
+          professor = professor,
+          visibilityScope = visibilityScope,
+          targetGroup = targetGroup
         )
       )
     }
@@ -528,7 +803,9 @@ class TalibViewModel(application: Application) : AndroidViewModel(application) {
     date: String,
     time: String,
     room: String,
-    coeff: Double
+    coeff: Double,
+    visibilityScope: String = "تخصص كامل",
+    targetGroup: String = "الكل"
   ) {
     viewModelScope.launch(Dispatchers.IO) {
       repository.insertExam(
@@ -539,7 +816,9 @@ class TalibViewModel(application: Application) : AndroidViewModel(application) {
           examDate = date,
           time = time,
           room = room,
-          coefficient = coeff
+          coefficient = coeff,
+          visibilityScope = visibilityScope,
+          targetGroup = targetGroup
         )
       )
     }
@@ -562,14 +841,21 @@ enum class ScreenRoute(val titleAr: String) {
   HOME("الرئيسية"),
   COURSES("المقررات"),
   LECTURES("المحاضرات والملفات"),
-  MY_FILES("ملفاتي"),
-  OFFLINE_CACHE("المحتوى المحفوظ بدون إنترنت"),
+  MY_FILES("ملفاتي وملاحظاتي"),
+  OFFLINE_CACHE("المحتوى المحفوظ"),
   ASSIGNMENTS("الواجبات"),
   SCHEDULE("الجدول الدراسي"),
   EXAMS("الامتحانات"),
   GRADES("العلامات والمعدل"),
   GROUP("الفوج والزملاء"),
   ANNOUNCEMENTS("الإعلانات"),
-  PROFILE("حسابي والملف"),
-  ADMIN("لوحة إدارة المحتوى")
+  PROFILE("حسابي والمسار الأكاديمي"),
+  ADMIN("لوحة الإدارة والرتب"),
+  LIBRARY("المكتبة والمراجع العامة"),
+  ACADEMIC_CALENDAR("التقويم الأكاديمي"),
+  ATTENDANCE("الحضور والغيابات"),
+  REPORT_ISSUE("تبليغ عن مشكلة"),
+  NOTIFICATIONS_CENTER("مركز الإشعارات والتنبيهات"),
+  POLLS("استطلاعات الرأي والتصويت"),
+  ONBOARDING("التهيئة واختيار المسار الأكاديمي")
 }

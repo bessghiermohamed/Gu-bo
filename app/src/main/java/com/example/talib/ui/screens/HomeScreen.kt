@@ -47,9 +47,9 @@ fun HomeScreen(
   val schedule by viewModel.currentSchedule.collectAsStateWithLifecycle()
   val exams by viewModel.allExams.collectAsStateWithLifecycle()
   val modules by viewModel.currentModules.collectAsStateWithLifecycle()
-  val viewedLectures by viewModel.previouslyViewedLectures.collectAsStateWithLifecycle()
-  val cachedMaterials by viewModel.allCachedMaterials.collectAsStateWithLifecycle()
-  val isOfflineMode by viewModel.isOfflineMode.collectAsStateWithLifecycle()
+  val polls by viewModel.allPolls.collectAsStateWithLifecycle()
+  val libraryReferences by viewModel.allLibraryReferences.collectAsStateWithLifecycle()
+  val attendanceRecords by viewModel.allAttendanceRecords.collectAsStateWithLifecycle()
 
   LazyColumn(
     modifier = Modifier
@@ -58,7 +58,7 @@ fun HomeScreen(
     contentPadding = PaddingValues(bottom = 90.dp, top = 8.dp),
     verticalArrangement = Arrangement.spacedBy(16.dp)
   ) {
-    // 1. Hero Card with Student Greeting & Academic Info
+    // 1. Hero Card with Student Greeting & Closed Academic Info
     item {
       Box(
         modifier = Modifier
@@ -149,49 +149,56 @@ fun HomeScreen(
               horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
               Icon(
-                imageVector = Icons.Default.Analytics,
+                imageVector = Icons.Default.Equalizer,
                 contentDescription = null,
-                tint = Color(0xFFFBBF24),
-                modifier = Modifier.size(18.dp)
+                tint = Color.White,
+                modifier = Modifier.size(16.dp)
               )
               Text(
-                text = "المعدل الفصلي التقديري: ",
-                style = MaterialTheme.typography.labelSmall.copy(color = Color.White)
+                text = "المعدل التقديري:",
+                style = MaterialTheme.typography.bodySmall.copy(color = Color.White.copy(alpha = 0.8f))
               )
               Text(
-                text = String.format("%.2f / 20", gpa),
-                style = MaterialTheme.typography.labelMedium.copy(
-                  color = Color(0xFFFBBF24),
-                  fontWeight = FontWeight.Black
+                text = if (gpa > 0.0) "$gpa / 20" else "-- / 20",
+                style = MaterialTheme.typography.bodySmall.copy(
+                  color = Color.White,
+                  fontWeight = FontWeight.Bold
                 )
               )
             }
 
-            Text(
-              text = "${modules.size} مقاييس مسجلة",
-              style = MaterialTheme.typography.labelSmall.copy(
-                color = Color.White.copy(alpha = 0.9f),
-                fontWeight = FontWeight.Bold
+            Row(
+              verticalAlignment = Alignment.CenterVertically,
+              horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+              Icon(
+                imageVector = Icons.Default.Book,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(16.dp)
               )
-            )
+              Text(
+                text = "${modules.size} مقاييس",
+                style = MaterialTheme.typography.bodySmall.copy(
+                  color = Color.White,
+                  fontWeight = FontWeight.Bold
+                )
+              )
+            }
           }
         }
       }
     }
 
-    // 1.6. Offline Room Database Cache Status Card
+    // 2. Notification Center Quick Alert Banner
     item {
       Card(
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(
-          containerColor = if (isOfflineMode) Color(0xFFFEF3C7) else MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)),
+        onClick = { onNavigate(ScreenRoute.NOTIFICATIONS_CENTER) },
         modifier = Modifier
           .fillMaxWidth()
           .padding(horizontal = 16.dp)
-          .clickable { onNavigate(ScreenRoute.OFFLINE_CACHE) }
-          .testTag("home_offline_cache_card")
       ) {
         Row(
           modifier = Modifier.padding(14.dp),
@@ -200,57 +207,23 @@ fun HomeScreen(
         ) {
           Box(
             modifier = Modifier
-              .size(42.dp)
+              .size(40.dp)
               .clip(CircleShape)
-              .background(if (isOfflineMode) Color(0xFFF59E0B) else Color(0xFF10B981).copy(alpha = 0.15f)),
+              .background(MaterialTheme.colorScheme.primary),
             contentAlignment = Alignment.Center
           ) {
-            Icon(
-              imageVector = if (isOfflineMode) Icons.Default.WifiOff else Icons.Default.OfflinePin,
-              contentDescription = null,
-              tint = if (isOfflineMode) Color.White else Color(0xFF10B981),
-              modifier = Modifier.size(22.dp)
-            )
+            Icon(Icons.Default.NotificationsActive, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
           }
-
           Column(modifier = Modifier.weight(1f)) {
-            Row(
-              verticalAlignment = Alignment.CenterVertically,
-              horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-              Text(
-                text = "المحتوى المخزن بدون إنترنت (Room DB)",
-                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
-              )
-              if (isOfflineMode) {
-                Box(
-                  modifier = Modifier
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(Color(0xFFD97706))
-                    .padding(horizontal = 4.dp, vertical = 1.dp)
-                ) {
-                  Text(
-                    text = "غير متصل",
-                    style = MaterialTheme.typography.labelSmall.copy(color = Color.White, fontSize = 9.sp)
-                  )
-                }
-              }
-            }
-
-            Text(
-              text = "${viewedLectures.size + cachedMaterials.size} محاضرة وملخص جاهزة للعرض الفوري بدون شبكة.",
-              style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
-            )
+            Text("مركز الإشعارات والتنبيهات الموحد", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
+            Text("تنبيهات الامتحانات، استطلاعات الرأي وتعديلات الجدول", style = MaterialTheme.typography.bodySmall)
           }
-
-          TextButton(onClick = { onNavigate(ScreenRoute.OFFLINE_CACHE) }) {
-            Text("فتح الذاكرة")
-          }
+          Icon(Icons.AutoMirrored.Filled.ArrowBackIos, contentDescription = null, modifier = Modifier.size(14.dp))
         }
       }
     }
 
-    // 2. The 10 Main Functional Grid Cards (Faithful to prototype)
+    // 3. Main Quick Action Grid
     item {
       Column(
         modifier = Modifier
@@ -259,7 +232,7 @@ fun HomeScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp)
       ) {
         Text(
-          text = "الخدمات والوحدات الأكاديمية",
+          text = "الخدمات والمساحة الأكاديمية",
           style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black)
         )
 
@@ -270,10 +243,10 @@ fun HomeScreen(
         ) {
           GridActionCard(
             title = "المقررات",
-            icon = Icons.AutoMirrored.Filled.MenuBook,
+            icon = Icons.Default.Book,
             badgeText = "${modules.size} مقاييس",
             isDarkMode = isDarkMode,
-            delayOffsetMs = 0,
+            delayOffsetMs = 100,
             onClick = { onNavigate(ScreenRoute.COURSES) },
             modifier = Modifier.weight(1f)
           )
@@ -281,15 +254,67 @@ fun HomeScreen(
           GridActionCard(
             title = "المحاضرات",
             icon = Icons.Default.Description,
-            badgeText = "ملفات PDF",
+            badgeText = "ملفات وPDF",
             isDarkMode = isDarkMode,
-            delayOffsetMs = 400,
+            delayOffsetMs = 500,
             onClick = { onNavigate(ScreenRoute.LECTURES) },
             modifier = Modifier.weight(1f)
           )
         }
 
-        // Row 2: الواجبات + الجدول
+        // Row 2: المكتبة العامة + التقويم الأكاديمي
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+          GridActionCard(
+            title = "المكتبة والمراجع",
+            icon = Icons.Default.LocalLibrary,
+            badgeText = "${libraryReferences.size} مراجع عامة",
+            isDarkMode = isDarkMode,
+            delayOffsetMs = 150,
+            onClick = { onNavigate(ScreenRoute.LIBRARY) },
+            modifier = Modifier.weight(1f)
+          )
+
+          GridActionCard(
+            title = "التقويم الأكاديمي",
+            icon = Icons.Default.EventNote,
+            badgeText = "المواعيد والعطل",
+            isDarkMode = isDarkMode,
+            delayOffsetMs = 550,
+            onClick = { onNavigate(ScreenRoute.ACADEMIC_CALENDAR) },
+            modifier = Modifier.weight(1f)
+          )
+        }
+
+        // Row 3: سجل الحضور والغياب + استطلاعات الرأي
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+          GridActionCard(
+            title = "الحضور والغياب",
+            icon = Icons.Default.HowToReg,
+            badgeText = "${attendanceRecords.size} سجلات",
+            isDarkMode = isDarkMode,
+            delayOffsetMs = 200,
+            onClick = { onNavigate(ScreenRoute.ATTENDANCE) },
+            modifier = Modifier.weight(1f)
+          )
+
+          GridActionCard(
+            title = "استطلاعات الفوج",
+            icon = Icons.Default.Poll,
+            badgeText = "${polls.size} تصويتات",
+            isDarkMode = isDarkMode,
+            delayOffsetMs = 600,
+            onClick = { onNavigate(ScreenRoute.POLLS) },
+            modifier = Modifier.weight(1f)
+          )
+        }
+
+        // Row 4: الواجبات + الجدول
         Row(
           modifier = Modifier.fillMaxWidth(),
           horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -299,23 +324,23 @@ fun HomeScreen(
             icon = Icons.Default.EditNote,
             badgeText = "مهام دراسية",
             isDarkMode = isDarkMode,
-            delayOffsetMs = 200,
+            delayOffsetMs = 250,
             onClick = { onNavigate(ScreenRoute.ASSIGNMENTS) },
             modifier = Modifier.weight(1f)
           )
 
           GridActionCard(
-            title = "الجدول",
+            title = "الجدول الأسبوعي",
             icon = Icons.Default.CalendarMonth,
-            badgeText = "التوقيت الأسبوعي",
+            badgeText = "التوقيت والقاعات",
             isDarkMode = isDarkMode,
-            delayOffsetMs = 600,
+            delayOffsetMs = 650,
             onClick = { onNavigate(ScreenRoute.SCHEDULE) },
             modifier = Modifier.weight(1f)
           )
         }
 
-        // Row 3: الامتحانات + العلامات
+        // Row 5: الامتحانات + العلامات والمعدل
         Row(
           modifier = Modifier.fillMaxWidth(),
           horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -341,44 +366,18 @@ fun HomeScreen(
           )
         }
 
-        // Row 4: الفوج + الإعلانات
+        // Row 6: تبليغ عن مشكلة للممثل + المحتوى المحفوظ
         Row(
           modifier = Modifier.fillMaxWidth(),
           horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
           GridActionCard(
-            title = "الفوج",
-            icon = Icons.Default.Groups,
-            badgeText = "الدفعة والأساتذة",
+            title = "تبليغ عن مشكلة",
+            icon = Icons.Default.ReportProblem,
+            badgeText = "تواصل مع الممثل",
             isDarkMode = isDarkMode,
-            delayOffsetMs = 150,
-            onClick = { onNavigate(ScreenRoute.GROUP) },
-            modifier = Modifier.weight(1f)
-          )
-
-          GridActionCard(
-            title = "الإعلانات",
-            icon = Icons.Default.Campaign,
-            badgeText = "${announcements.size} تنبيهات",
-            isDarkMode = isDarkMode,
-            delayOffsetMs = 550,
-            onClick = { onNavigate(ScreenRoute.ANNOUNCEMENTS) },
-            modifier = Modifier.weight(1f)
-          )
-        }
-
-        // Row 5: ملفاتي وملاحظاتي + المحتوى المحفوظ
-        Row(
-          modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-          GridActionCard(
-            title = "ملفاتي وملاحظاتي",
-            icon = Icons.Default.FolderSpecial,
-            badgeText = "محفوظاتي وملاحظاتي",
-            isDarkMode = isDarkMode,
-            delayOffsetMs = 250,
-            onClick = { onNavigate(ScreenRoute.MY_FILES) },
+            delayOffsetMs = 350,
+            onClick = { onNavigate(ScreenRoute.REPORT_ISSUE) },
             modifier = Modifier.weight(1f)
           )
 
@@ -387,7 +386,7 @@ fun HomeScreen(
             icon = Icons.Default.CloudDone,
             badgeText = "ذاكرة بدون إنترنت",
             isDarkMode = isDarkMode,
-            delayOffsetMs = 650,
+            delayOffsetMs = 750,
             onClick = { onNavigate(ScreenRoute.OFFLINE_CACHE) },
             modifier = Modifier.weight(1f)
           )
@@ -395,7 +394,7 @@ fun HomeScreen(
       }
     }
 
-    // 3. Upcoming Schedule Section
+    // 4. Upcoming Schedule Section
     item {
       Column(
         modifier = Modifier
@@ -490,7 +489,7 @@ fun HomeScreen(
       }
     }
 
-    // 4. Latest Announcements Carousel
+    // 5. Latest Announcements
     item {
       Column(
         modifier = Modifier
