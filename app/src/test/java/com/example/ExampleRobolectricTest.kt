@@ -3,7 +3,6 @@ package com.example
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
-import com.example.talib.ai.ChatMessage
 import com.example.talib.data.local.CachedCourseMaterial
 import com.example.talib.data.local.TalibDatabase
 import kotlinx.coroutines.flow.first
@@ -25,19 +24,6 @@ class ExampleRobolectricTest {
     val context = ApplicationProvider.getApplicationContext<Context>()
     val appName = context.getString(R.string.app_name)
     assertEquals("طالب | Talib", appName)
-  }
-
-  @Test
-  fun `academic chatbot message structure test`() {
-    val message = ChatMessage(
-      text = "شرح درس النحو العربي للمبتدأ والخبر",
-      isFromUser = false,
-      categoryBadge = "المساعد الأكاديمي 24/7",
-      suggestedActions = listOf("المزيد من الأمثلة", "تمارين إعراب")
-    )
-    assertEquals(false, message.isFromUser)
-    assertEquals("المساعد الأكاديمي 24/7", message.categoryBadge)
-    assertEquals(2, message.suggestedActions.size)
   }
 
   @Test

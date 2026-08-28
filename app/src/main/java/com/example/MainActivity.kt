@@ -52,7 +52,7 @@ class MainActivity : ComponentActivity() {
               modifier = Modifier.fillMaxSize(),
               contentWindowInsets = WindowInsets(0, 0, 0, 0),
               topBar = {
-                if (currentScreen != ScreenRoute.AI_CHAT && currentScreen != ScreenRoute.OFFLINE_CACHE && currentScreen != ScreenRoute.MY_FILES) {
+                if (currentScreen != ScreenRoute.OFFLINE_CACHE && currentScreen != ScreenRoute.MY_FILES) {
                   HeaderSection(
                     isDarkMode = isDarkMode,
                     onToggleTheme = { talibViewModel.toggleTheme() },
@@ -73,7 +73,7 @@ class MainActivity : ComponentActivity() {
                 }
               },
               bottomBar = {
-                if (currentScreen != ScreenRoute.ADMIN && currentScreen != ScreenRoute.AI_CHAT && currentScreen != ScreenRoute.OFFLINE_CACHE) {
+                if (currentScreen != ScreenRoute.ADMIN && currentScreen != ScreenRoute.OFFLINE_CACHE) {
                   TalibBottomNavBar(
                     currentScreen = currentScreen,
                     onNavigate = { route -> talibViewModel.navigateTo(route) }
@@ -112,10 +112,6 @@ class MainActivity : ComponentActivity() {
                     )
                     ScreenRoute.LECTURES -> LecturesScreen(
                       viewModel = talibViewModel
-                    )
-                    ScreenRoute.AI_CHAT -> AcademicChatbotScreen(
-                      viewModel = talibViewModel,
-                      onNavigateBack = { talibViewModel.navigateBack() }
                     )
                     ScreenRoute.MY_FILES -> MyFilesScreen(
                       viewModel = talibViewModel,

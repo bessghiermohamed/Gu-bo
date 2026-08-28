@@ -367,7 +367,7 @@ fun HomeScreen(
           )
         }
 
-        // Row 5: ملفاتي وملاحظاتي + الخزنة المحلية
+        // Row 5: ملفاتي وملاحظاتي + المحتوى المحفوظ
         Row(
           modifier = Modifier.fillMaxWidth(),
           horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -375,7 +375,7 @@ fun HomeScreen(
           GridActionCard(
             title = "ملفاتي وملاحظاتي",
             icon = Icons.Default.FolderSpecial,
-            badgeText = "دفتر الملاحظات",
+            badgeText = "محفوظاتي وملاحظاتي",
             isDarkMode = isDarkMode,
             delayOffsetMs = 250,
             onClick = { onNavigate(ScreenRoute.MY_FILES) },
@@ -383,9 +383,9 @@ fun HomeScreen(
           )
 
           GridActionCard(
-            title = "الخزنة المحلية",
+            title = "المحتوى المحفوظ",
             icon = Icons.Default.CloudDone,
-            badgeText = "${cachedMaterials.size} ملفات أوفلاين",
+            badgeText = "ذاكرة بدون إنترنت",
             isDarkMode = isDarkMode,
             delayOffsetMs = 650,
             onClick = { onNavigate(ScreenRoute.OFFLINE_CACHE) },

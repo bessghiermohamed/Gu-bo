@@ -24,7 +24,7 @@ class GreetingScreenshotTest {
   fun talib_app_screenshot() {
     composeTestRule.setContent {
       TalibTheme {
-        Text("طالب - المساعد الأكاديمي 24/7")
+        Text("طالب - منصة الطالب الجامعي")
       }
     }
 

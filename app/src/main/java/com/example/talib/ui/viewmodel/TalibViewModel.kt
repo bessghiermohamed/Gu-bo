@@ -3,7 +3,6 @@ package com.example.talib.ui.viewmodel
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.talib.ai.*
 import com.example.talib.data.local.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
@@ -13,7 +12,6 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalCoroutinesApi::class)
 class TalibViewModel(application: Application) : AndroidViewModel(application) {
   private val repository: TalibRepository
-  private val aiService = FirebaseGenkitAcademicService(application)
 
   init {
     val db = TalibDatabase.getDatabase(application, viewModelScope)
@@ -241,105 +239,6 @@ class TalibViewModel(application: Application) : AndroidViewModel(application) {
     viewModelScope.launch(Dispatchers.IO) {
       repository.deleteCachedMaterial(material)
     }
-  }
-
-  // --- 24/7 Academic AI Chatbot (Firebase Genkit AI) ---
-  private val _chatMessages = MutableStateFlow<List<ChatMessage>>(
-    listOf(
-      ChatMessage(
-        text = "مرحباً بك في المساعد الأكاديمي الذكي 24/7 لمنصة طالب! 🎓\nأنا مدعوم بمكتبة Firebase Genkit AI لتقديم الدعم الأكاديمي الشامل: شرح المحاضرات، حل تمارين الأعمال الموجهة TD، مراجعة الامتحانات، وتلخيص المقررات على مدار الساعة.\nكيف يمكنني مساعدتك في دراستك اليوم؟",
-        isFromUser = false,
-        categoryBadge = "المساعد الأكاديمي 24/7",
-        suggestedActions = listOf(
-          "📚 اشرح لي درس النحو (المبتدأ والخبر)",
-          "💻 كيف تعمل خوارزمية البحث الثنائي؟",
-          "📊 كيف أحسب معدلي الفصلي في نظام LMD؟",
-          "🎯 نصائح ذكية للتحضير للامتحانات"
-        )
-      )
-    )
-  )
-  val chatMessages: StateFlow<List<ChatMessage>> = _chatMessages.asStateFlow()
-
-  private val _isAiThinking = MutableStateFlow(false)
-  val isAiThinking: StateFlow<Boolean> = _isAiThinking.asStateFlow()
-
-  private val _currentChatInput = MutableStateFlow("")
-  val currentChatInput: StateFlow<String> = _currentChatInput.asStateFlow()
-
-  fun updateChatInput(input: String) {
-    _currentChatInput.value = input
-  }
-
-  fun sendAcademicChatMessage(promptText: String? = null) {
-    val textToSend = promptText ?: _currentChatInput.value.trim()
-    if (textToSend.isBlank() || _isAiThinking.value) return
-
-    val userMessage = ChatMessage(
-      text = textToSend,
-      isFromUser = true
-    )
-
-    _chatMessages.value = _chatMessages.value + userMessage
-    if (promptText == null) {
-      _currentChatInput.value = ""
-    }
-
-    viewModelScope.launch {
-      _isAiThinking.value = true
-      try {
-        val currentProf = studentProfile.value
-        val modulesList = currentModules.value.map { it.name }
-        val examsList = allExams.value.map { "${it.moduleName}: ${it.title}" }
-
-        val studentContext = StudentAcademicContext(
-          studentName = currentProf?.fullName ?: "طالب العلم",
-          specialty = currentProf?.specialtyName ?: "الأدب العربي واللغات",
-          academicYear = currentProf?.academicYearName ?: "السنة الثانية - ليسانس L2",
-          currentModules = modulesList,
-          upcomingExams = examsList
-        )
-
-        val (answer, followUps) = aiService.askAcademicAssistant(textToSend, studentContext)
-
-        val aiMessage = ChatMessage(
-          text = answer,
-          isFromUser = false,
-          categoryBadge = "المساعد الأكاديمي",
-          suggestedActions = followUps,
-          isOfflineHandled = _isOfflineMode.value
-        )
-        _chatMessages.value = _chatMessages.value + aiMessage
-      } catch (e: Exception) {
-        val errorMessage = ChatMessage(
-          text = "عذراً، حدث خطأ أثناء معالجة الطلب الأكاديمي. يمكنك إعادة المحاولة أو مراجعة المحتوى المخزن في الذاكرة بدون إنترنت.",
-          isFromUser = false,
-          categoryBadge = "تنبيه"
-        )
-        _chatMessages.value = _chatMessages.value + errorMessage
-      } finally {
-        _isAiThinking.value = false
-      }
-    }
-  }
-
-  fun clearChatHistory() {
-    _chatMessages.value = listOf(
-      ChatMessage(
-        text = "تم بدء محادثة دراسية جديدة. كيف أساعدك في مقرراتك وامتحاناتك؟",
-        isFromUser = false,
-        categoryBadge = "المساعد الأكاديمي 24/7",
-        suggestedActions = listOf(
-          "📚 ما هي أهم أسئلة امتحانات النحو؟",
-          "⚡ خطة مراجعة سريعة لأسبوع الامتحانات",
-          "🔍 شرح مبسط لنظرية العامل في النحو"
-        )
-      )
-    )
-  }
-
-  fun askPredefinedAcademicQuestion(question: String) {
-    sendAcademicChatMessage(question)
   }
 
   // Assignments
@@ -663,7 +562,6 @@ enum class ScreenRoute(val titleAr: String) {
   HOME("الرئيسية"),
   COURSES("المقررات"),
   LECTURES("المحاضرات والملفات"),
-  AI_CHAT("المساعد الأكاديمي 24/7"),
   MY_FILES("ملفاتي"),
   OFFLINE_CACHE("المحتوى المحفوظ بدون إنترنت"),
   ASSIGNMENTS("الواجبات"),
