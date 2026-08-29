@@ -10,9 +10,22 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface TalibDao {
+  // Institutions
+  @Query("SELECT * FROM institutions ORDER BY id ASC")
+  fun getAllInstitutions(): Flow<List<Institution>>
+
+  @Insert(onConflict = OnConflictStrategy.REPLACE)
+  suspend fun insertInstitutions(institutions: List<Institution>)
+
+  @Insert(onConflict = OnConflictStrategy.REPLACE)
+  suspend fun insertInstitution(institution: Institution): Long
+
   // Specialties
   @Query("SELECT * FROM specialties ORDER BY id ASC")
   fun getAllSpecialties(): Flow<List<Specialty>>
+
+  @Query("SELECT * FROM specialties WHERE institutionId = :institutionId ORDER BY id ASC")
+  fun getSpecialtiesForInstitution(institutionId: Long): Flow<List<Specialty>>
 
   @Insert(onConflict = OnConflictStrategy.REPLACE)
   suspend fun insertSpecialty(specialty: Specialty): Long
@@ -35,6 +48,19 @@ interface TalibDao {
 
   @Insert(onConflict = OnConflictStrategy.REPLACE)
   suspend fun insertAcademicYear(year: AcademicYear): Long
+
+  // Cohort Groups
+  @Query("SELECT * FROM cohort_groups ORDER BY id ASC")
+  fun getAllCohortGroups(): Flow<List<CohortGroup>>
+
+  @Query("SELECT * FROM cohort_groups WHERE specialtyId = :specialtyId AND academicYearId = :yearId ORDER BY id ASC")
+  fun getGroupsForSpecialtyAndYear(specialtyId: Long, yearId: Long): Flow<List<CohortGroup>>
+
+  @Insert(onConflict = OnConflictStrategy.REPLACE)
+  suspend fun insertCohortGroups(groups: List<CohortGroup>)
+
+  @Insert(onConflict = OnConflictStrategy.REPLACE)
+  suspend fun insertCohortGroup(group: CohortGroup): Long
 
   // Modules
   @Query("SELECT * FROM modules ORDER BY id ASC")

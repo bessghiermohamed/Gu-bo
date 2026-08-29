@@ -169,8 +169,23 @@ class TalibViewModel(application: Application) : AndroidViewModel(application) {
   val studentProfile: StateFlow<StudentProfile?> = repository.studentProfile
     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
+  // Higher Education Institutions
+  val allInstitutions: StateFlow<List<Institution>> = repository.allInstitutions
+    .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
   // Specialties
   val specialties: StateFlow<List<Specialty>> = repository.allSpecialties
+    .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+  val allSpecialties: StateFlow<List<Specialty>> = repository.allSpecialties
+    .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+  // All Academic Years
+  val allAcademicYears: StateFlow<List<AcademicYear>> = repository.allAcademicYears
+    .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+  // All Cohort Groups
+  val allCohortGroups: StateFlow<List<CohortGroup>> = repository.allCohortGroups
     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
   // Selected Specialty ID & Year ID
@@ -639,14 +654,35 @@ class TalibViewModel(application: Application) : AndroidViewModel(application) {
   val allUsers: StateFlow<List<AppUser>> = repository.allUsers
     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-  fun updateUserRole(userId: Long, newRole: String, newScope: String = "فوج واحد") {
+  fun updateUserRole(
+    userId: Long,
+    newRole: String,
+    scopeAssignment: ScopeAssignment? = null
+  ) {
     viewModelScope.launch(Dispatchers.IO) {
       val users = repository.allUsers.first()
       val target = users.find { it.id == userId }
       if (target != null) {
-        repository.updateUser(target.copy(role = newRole, representativeScope = newScope))
+        val updatedUser = target.copy(
+          role = newRole,
+          scopeInstitutionId = scopeAssignment?.institutionId,
+          scopeSpecialtyId = scopeAssignment?.specialtyId,
+          scopeAcademicYearId = scopeAssignment?.yearId,
+          scopeCohortGroupId = scopeAssignment?.groupId,
+          representativeScope = scopeAssignment?.scopeDescription ?: when (newRole) {
+            "SPECIALTY_ADMIN" -> "مسؤول تخصص"
+            "REPRESENTATIVE" -> "ممثل فوج"
+            "OWNER" -> "المالك الشامل"
+            else -> "طالب"
+          }
+        )
+        repository.updateUser(updatedUser)
       }
     }
+  }
+
+  fun updateUserRole(userId: Long, newRole: String, newScope: String) {
+    updateUserRole(userId, newRole, ScopeAssignment(scopeDescription = newScope))
   }
 
   fun addUser(

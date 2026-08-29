@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.talib.data.local.AppUser
+import com.example.talib.data.local.ScopeAssignment
 import com.example.talib.ui.viewmodel.ScreenRoute
 import com.example.talib.ui.viewmodel.TalibViewModel
 
@@ -41,6 +42,9 @@ fun AdminPanelScreen(
   val context = LocalContext.current
   val modules by viewModel.allModules.collectAsStateWithLifecycle()
   val specialties by viewModel.specialties.collectAsStateWithLifecycle()
+  val institutions by viewModel.allInstitutions.collectAsStateWithLifecycle()
+  val allAcademicYears by viewModel.allAcademicYears.collectAsStateWithLifecycle()
+  val allCohortGroups by viewModel.allCohortGroups.collectAsStateWithLifecycle()
   val profile by viewModel.studentProfile.collectAsStateWithLifecycle()
   val users by viewModel.allUsers.collectAsStateWithLifecycle()
   val issueReports by viewModel.allIssueReports.collectAsStateWithLifecycle()
@@ -511,15 +515,39 @@ fun AdminPanelScreen(
   if (targetUserForRole != null) {
     val targetUser = targetUserForRole!!
     var selectedNewRole by remember { mutableStateOf("REPRESENTATIVE") }
-    var selectedInstitution by remember { mutableStateOf("المدرسة العليا للأساتذة - بوزريعة") }
-    var selectedSpecName by remember { mutableStateOf(profile?.specialtyName ?: "اللغة والأدب العربي") }
-    var selectedYearName by remember { mutableStateOf(profile?.academicYearName ?: "السنة الثانية (L2)") }
-    var selectedGroupName by remember { mutableStateOf(targetUser.groupNumber) }
+    
+    // Structured Hierarchy IDs
+    var selectedInstitutionId by remember {
+      mutableStateOf(targetUser.scopeInstitutionId ?: institutions.firstOrNull()?.id ?: 1L)
+    }
+    var selectedSpecId by remember {
+      mutableStateOf(targetUser.scopeSpecialtyId ?: specialties.firstOrNull()?.id ?: 1L)
+    }
+    var selectedYearId by remember {
+      mutableStateOf(targetUser.scopeAcademicYearId ?: allAcademicYears.firstOrNull()?.id ?: 2L)
+    }
+    var selectedGroupId by remember {
+      mutableStateOf(targetUser.scopeCohortGroupId ?: allCohortGroups.firstOrNull()?.id ?: 3L)
+    }
 
-    val institutionList = listOf("المدرسة العليا للأساتذة - بوزريعة", "جامعة العلوم والتكنولوجيا USTHB", "جامعة الجزائر 1")
-    val specList = listOf("اللغة والأدب العربي", "الإعلام الآلي وتطوير البرمجيات", "اللغة الإنجليزية")
-    val yearList = listOf("السنة الأولى (L1)", "السنة الثانية (L2)", "السنة الثالثة (L3)", "ماستر 1 (M1)")
-    val groupList = listOf("الفوج 01", "الفوج 02", "الفوج 03", "الفوج 04", "الفوج 05")
+    // Filtered lists based on database relations
+    val availableSpecialties = remember(selectedInstitutionId, specialties) {
+      val filtered = specialties.filter { it.institutionId == selectedInstitutionId }
+      if (filtered.isNotEmpty()) filtered else specialties
+    }
+    val availableYears = remember(selectedSpecId, allAcademicYears) {
+      val filtered = allAcademicYears.filter { it.specialtyId == selectedSpecId }
+      if (filtered.isNotEmpty()) filtered else allAcademicYears
+    }
+    val availableGroups = remember(selectedSpecId, selectedYearId, allCohortGroups) {
+      val filtered = allCohortGroups.filter { it.specialtyId == selectedSpecId && it.academicYearId == selectedYearId }
+      if (filtered.isNotEmpty()) filtered else allCohortGroups
+    }
+
+    val currentSelectedInstitution = institutions.find { it.id == selectedInstitutionId }
+    val currentSelectedSpec = specialties.find { it.id == selectedSpecId }
+    val currentSelectedYear = allAcademicYears.find { it.id == selectedYearId }
+    val currentSelectedGroup = allCohortGroups.find { it.id == selectedGroupId }
 
     AlertDialog(
       onDismissRequest = { targetUserForRole = null },
@@ -558,59 +586,74 @@ fun AdminPanelScreen(
             item {
               HorizontalDivider()
               Text(
-                text = "تحديد شجرة النطاق الهرمي الإشرافي (Hierarchy Scope):",
+                text = "تحديد شجرة النطاق بالمعرفات الحقيقية (Entity IDs):",
                 style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
               )
             }
 
+            // 1. Institution selection by ID
             item {
-              Text("المؤسسة:", style = MaterialTheme.typography.labelSmall)
+              Text("المؤسسة الجامعية (Institution ID):", style = MaterialTheme.typography.labelSmall)
               Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                institutionList.take(2).forEach { inst ->
+                institutions.forEach { inst ->
                   FilterChip(
-                    selected = selectedInstitution == inst,
-                    onClick = { selectedInstitution = inst },
-                    label = { Text(inst.substringBefore(" -"), fontSize = 11.sp) }
+                    selected = selectedInstitutionId == inst.id,
+                    onClick = {
+                      selectedInstitutionId = inst.id
+                      val matchSpec = specialties.firstOrNull { it.institutionId == inst.id }
+                      if (matchSpec != null) selectedSpecId = matchSpec.id
+                    },
+                    label = { Text("${inst.nameAr.substringBefore(" -")} [#${inst.id}]", fontSize = 11.sp) }
                   )
                 }
               }
             }
 
+            // 2. Specialty selection by ID
             item {
-              Text("التخصص:", style = MaterialTheme.typography.labelSmall)
+              Text("التخصص الأكاديمي (Specialty ID):", style = MaterialTheme.typography.labelSmall)
               Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                specList.take(2).forEach { sp ->
+                availableSpecialties.forEach { sp ->
                   FilterChip(
-                    selected = selectedSpecName == sp,
-                    onClick = { selectedSpecName = sp },
-                    label = { Text(sp, fontSize = 11.sp) }
+                    selected = selectedSpecId == sp.id,
+                    onClick = {
+                      selectedSpecId = sp.id
+                      val matchYr = allAcademicYears.firstOrNull { it.specialtyId == sp.id }
+                      if (matchYr != null) selectedYearId = matchYr.id
+                    },
+                    label = { Text("${sp.nameAr} [#${sp.id}]", fontSize = 11.sp) }
                   )
                 }
               }
             }
 
+            // 3. Representative Year and Group selections by ID
             if (selectedNewRole == "REPRESENTATIVE") {
               item {
-                Text("السنة الدراسية:", style = MaterialTheme.typography.labelSmall)
+                Text("السنة الدراسية (Academic Year ID):", style = MaterialTheme.typography.labelSmall)
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                  yearList.take(3).forEach { yr ->
+                  availableYears.take(4).forEach { yr ->
                     FilterChip(
-                      selected = selectedYearName == yr,
-                      onClick = { selectedYearName = yr },
-                      label = { Text(yr, fontSize = 11.sp) }
+                      selected = selectedYearId == yr.id,
+                      onClick = {
+                        selectedYearId = yr.id
+                        val matchGrp = allCohortGroups.firstOrNull { it.specialtyId == selectedSpecId && it.academicYearId == yr.id }
+                        if (matchGrp != null) selectedGroupId = matchGrp.id
+                      },
+                      label = { Text("${yr.yearName} [#${yr.id}]", fontSize = 11.sp) }
                     )
                   }
                 }
               }
 
               item {
-                Text("الفوج المعني:", style = MaterialTheme.typography.labelSmall)
+                Text("الفوج المعني (Cohort Group ID):", style = MaterialTheme.typography.labelSmall)
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                  groupList.take(4).forEach { grp ->
+                  availableGroups.take(5).forEach { grp ->
                     FilterChip(
-                      selected = selectedGroupName == grp,
-                      onClick = { selectedGroupName = grp },
-                      label = { Text(grp, fontSize = 11.sp) }
+                      selected = selectedGroupId == grp.id,
+                      onClick = { selectedGroupId = grp.id },
+                      label = { Text("${grp.groupName} [#${grp.id}]", fontSize = 11.sp) }
                     )
                   }
                 }
@@ -622,18 +665,36 @@ fun AdminPanelScreen(
       confirmButton = {
         Button(
           onClick = {
-            val constructedScope = when (selectedNewRole) {
-              "SPECIALTY_ADMIN" -> "$selectedInstitution • $selectedSpecName"
-              "REPRESENTATIVE" -> "$selectedSpecName • $selectedYearName • $selectedGroupName"
-              else -> "طالب"
+            val scopeAssignment = when (selectedNewRole) {
+              "SPECIALTY_ADMIN" -> ScopeAssignment(
+                institutionId = selectedInstitutionId,
+                specialtyId = selectedSpecId,
+                yearId = null,
+                groupId = null,
+                scopeDescription = "${currentSelectedInstitution?.nameAr ?: ""} • ${currentSelectedSpec?.nameAr ?: ""}"
+              )
+              "REPRESENTATIVE" -> ScopeAssignment(
+                institutionId = selectedInstitutionId,
+                specialtyId = selectedSpecId,
+                yearId = selectedYearId,
+                groupId = selectedGroupId,
+                scopeDescription = "${currentSelectedSpec?.nameAr ?: ""} • ${currentSelectedYear?.yearName ?: ""} • ${currentSelectedGroup?.groupName ?: ""}"
+              )
+              else -> ScopeAssignment(
+                institutionId = selectedInstitutionId,
+                specialtyId = selectedSpecId,
+                yearId = selectedYearId,
+                groupId = selectedGroupId,
+                scopeDescription = "طالب"
+              )
             }
-            viewModel.updateUserRole(targetUser.id, selectedNewRole, constructedScope)
-            statusMessage = "تم تعيين ${targetUser.fullName} بنجاح كـ [$selectedNewRole] بنطاق [$constructedScope]"
+            viewModel.updateUserRole(targetUser.id, selectedNewRole, scopeAssignment)
+            statusMessage = "تم تعيين ${targetUser.fullName} بنجاح كـ [$selectedNewRole] بمعرفات نطاق فعلية: [Specialty ID: $selectedSpecId, Year ID: ${if (selectedNewRole == "REPRESENTATIVE") selectedYearId else "-"}, Group ID: ${if (selectedNewRole == "REPRESENTATIVE") selectedGroupId else "-"}] 🎯"
             targetUserForRole = null
           },
           shape = RoundedCornerShape(10.dp)
         ) {
-          Text("تأكيد التعيين والنطاق")
+          Text("تأكيد التعيين بالمعرفات الفعلية")
         }
       },
       dismissButton = {
@@ -1028,11 +1089,16 @@ fun AdminPanelScreen(
                     .background(MaterialTheme.colorScheme.primaryContainer)
                     .padding(horizontal = 8.dp, vertical = 3.dp)
                 ) {
+                  val idTag = if (u.scopeSpecialtyId != null && u.role != "STUDENT") {
+                    val groupStr = if (u.scopeCohortGroupId != null) " • G#${u.scopeCohortGroupId}" else ""
+                    " [S#${u.scopeSpecialtyId}$groupStr]"
+                  } else ""
+
                   Text(
                     text = when (u.role) {
                       "OWNER" -> "المالك"
-                      "SPECIALTY_ADMIN" -> "مسؤول تخصص"
-                      "REPRESENTATIVE" -> "ممثل (${u.representativeScope})"
+                      "SPECIALTY_ADMIN" -> "مسؤول تخصص$idTag"
+                      "REPRESENTATIVE" -> "ممثل (${u.representativeScope})$idTag"
                       else -> "طالب"
                     },
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)

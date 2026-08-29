@@ -3,9 +3,19 @@ package com.example.talib.data.local
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
+// 0. المؤسسات الجامعية
+@Entity(tableName = "institutions")
+data class Institution(
+  @PrimaryKey(autoGenerate = true) val id: Long = 0,
+  val nameAr: String,
+  val type: String = "المدرسة العليا للأساتذة",
+  val city: String = "الجزائر"
+)
+
 @Entity(tableName = "specialties")
 data class Specialty(
   @PrimaryKey(autoGenerate = true) val id: Long = 0,
+  val institutionId: Long = 1,
   val nameAr: String,
   val code: String,
   val iconName: String = "book",
@@ -20,6 +30,25 @@ data class AcademicYear(
   val specialtyId: Long,
   val yearName: String,
   val semester: Int = 1
+)
+
+// 0.1 الأفواج الدراسية (Cohort Groups)
+@Entity(tableName = "cohort_groups")
+data class CohortGroup(
+  @PrimaryKey(autoGenerate = true) val id: Long = 0,
+  val specialtyId: Long,
+  val academicYearId: Long,
+  val groupName: String, // "الفوج 01", "الفوج 02", "الفوج 03"
+  val subGroup: String = ""
+)
+
+// هيكل تعيين النطاق بالمعرفات الرقمية الفعلية
+data class ScopeAssignment(
+  val institutionId: Long? = null,
+  val specialtyId: Long? = null,
+  val yearId: Long? = null,
+  val groupId: Long? = null,
+  val scopeDescription: String = ""
 )
 
 @Entity(tableName = "modules")
@@ -268,5 +297,9 @@ data class AppUser(
   val groupNumber: String,
   val role: String = "STUDENT", // STUDENT / REPRESENTATIVE / SPECIALTY_ADMIN / OWNER
   val representativeScope: String = "فوج واحد", // فوج واحد / سنة كاملة / تخصص كامل
-  val assignedSpecialtyId: Long = 1
+  val assignedSpecialtyId: Long = 1,
+  val scopeInstitutionId: Long? = null,
+  val scopeSpecialtyId: Long? = null,
+  val scopeAcademicYearId: Long? = null,
+  val scopeCohortGroupId: Long? = null
 )

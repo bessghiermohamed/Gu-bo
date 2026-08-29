@@ -3,8 +3,14 @@ package com.example.talib.data.local
 import kotlinx.coroutines.flow.Flow
 
 class TalibRepository(private val dao: TalibDao) {
+  // Institutions
+  val allInstitutions: Flow<List<Institution>> = dao.getAllInstitutions()
+  suspend fun insertInstitution(institution: Institution) = dao.insertInstitution(institution)
+  suspend fun insertInstitutions(institutions: List<Institution>) = dao.insertInstitutions(institutions)
+
   // Specialties
   val allSpecialties: Flow<List<Specialty>> = dao.getAllSpecialties()
+  fun getSpecialtiesForInstitution(institutionId: Long): Flow<List<Specialty>> = dao.getSpecialtiesForInstitution(institutionId)
   suspend fun insertSpecialty(specialty: Specialty) = dao.insertSpecialty(specialty)
   suspend fun insertSpecialties(specialties: List<Specialty>) = dao.insertSpecialties(specialties)
   suspend fun deleteSpecialty(specialty: Specialty) = dao.deleteSpecialty(specialty)
@@ -14,6 +20,13 @@ class TalibRepository(private val dao: TalibDao) {
   val allAcademicYears: Flow<List<AcademicYear>> = dao.getAllAcademicYears()
   suspend fun insertAcademicYear(year: AcademicYear) = dao.insertAcademicYear(year)
   suspend fun insertAcademicYears(years: List<AcademicYear>) = dao.insertAcademicYears(years)
+
+  // Cohort Groups
+  val allCohortGroups: Flow<List<CohortGroup>> = dao.getAllCohortGroups()
+  fun getGroupsForSpecialtyAndYear(specialtyId: Long, yearId: Long): Flow<List<CohortGroup>> =
+    dao.getGroupsForSpecialtyAndYear(specialtyId, yearId)
+  suspend fun insertCohortGroups(groups: List<CohortGroup>) = dao.insertCohortGroups(groups)
+  suspend fun insertCohortGroup(group: CohortGroup) = dao.insertCohortGroup(group)
 
   // Modules
   val allModules: Flow<List<ModuleCourse>> = dao.getAllModules()
