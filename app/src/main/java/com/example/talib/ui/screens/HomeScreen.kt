@@ -454,64 +454,84 @@ fun HomeScreen(
           }
         }
 
-        LazyRow(
-          contentPadding = PaddingValues(horizontal = 16.dp),
-          horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-          items(announcements.take(3)) { ann ->
-            Card(
-              shape = RoundedCornerShape(18.dp),
-              colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)),
-              modifier = Modifier
-                .width(260.dp)
-                .clickable { onNavigate(ScreenRoute.ANNOUNCEMENTS) }
+        if (announcements.isEmpty()) {
+          Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+          ) {
+            Row(
+              modifier = Modifier.padding(16.dp),
+              verticalAlignment = Alignment.CenterVertically,
+              horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-              Column(
-                modifier = Modifier.padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
+              Icon(Icons.Default.Campaign, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+              Text(
+                text = "لا توجد إعلانات منشورة حالياً.",
+                style = MaterialTheme.typography.bodySmall
+              )
+            }
+          }
+        } else {
+          LazyRow(
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+          ) {
+            items(announcements.take(3)) { ann ->
+              Card(
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)),
+                modifier = Modifier
+                  .width(260.dp)
+                  .clickable { onNavigate(ScreenRoute.ANNOUNCEMENTS) }
               ) {
-                Row(
-                  modifier = Modifier.fillMaxWidth(),
-                  horizontalArrangement = Arrangement.SpaceBetween,
-                  verticalAlignment = Alignment.CenterVertically
+                Column(
+                  modifier = Modifier.padding(14.dp),
+                  verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                  Box(
-                    modifier = Modifier
-                      .clip(RoundedCornerShape(6.dp))
-                      .background(
-                        when (ann.urgency) {
-                          "عاجل" -> Color(0xFFEF4444)
-                          "هام" -> Color(0xFFF59E0B)
-                          else -> MaterialTheme.colorScheme.primary
-                        }
-                      )
-                      .padding(horizontal = 6.dp, vertical = 2.dp)
+                  Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                   ) {
+                    Box(
+                      modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(
+                          when (ann.urgency) {
+                            "عاجل" -> Color(0xFFEF4444)
+                            "هام" -> Color(0xFFF59E0B)
+                            else -> MaterialTheme.colorScheme.primary
+                          }
+                        )
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                      Text(
+                        text = ann.urgency,
+                        style = MaterialTheme.typography.labelSmall.copy(color = Color.White, fontWeight = FontWeight.Bold)
+                      )
+                    }
+
                     Text(
-                      text = ann.urgency,
-                      style = MaterialTheme.typography.labelSmall.copy(color = Color.White, fontWeight = FontWeight.Bold)
+                      text = ann.date,
+                      style = MaterialTheme.typography.labelSmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
                     )
                   }
 
                   Text(
-                    text = ann.date,
-                    style = MaterialTheme.typography.labelSmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    text = ann.title,
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                  )
+
+                  Text(
+                    text = ann.content,
+                    style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
                   )
                 }
-
-                Text(
-                  text = ann.title,
-                  style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                  maxLines = 2,
-                  overflow = TextOverflow.Ellipsis
-                )
-
-                Text(
-                  text = ann.content,
-                  style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant),
-                  maxLines = 2,
-                  overflow = TextOverflow.Ellipsis
-                )
               }
             }
           }

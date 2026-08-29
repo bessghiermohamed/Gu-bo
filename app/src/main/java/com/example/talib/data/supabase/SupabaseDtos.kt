@@ -17,8 +17,10 @@ data class SupabaseSpecialtyDto(
 @Serializable
 data class SupabaseModuleDto(
   @SerialName("id") val id: Long? = null,
+  @SerialName("institution_id") val institutionId: Long? = null,
   @SerialName("specialty_id") val specialtyId: Long,
   @SerialName("academic_year_id") val academicYearId: Long = 1,
+  @SerialName("cohort_id") val cohortId: Long? = null,
   @SerialName("name") val name: String,
   @SerialName("code") val code: String,
   @SerialName("coefficient") val coefficient: Double = 2.0,
@@ -36,6 +38,10 @@ data class SupabaseModuleDto(
 data class SupabaseLectureDto(
   @SerialName("id") val id: Long? = null,
   @SerialName("module_id") val moduleId: Long,
+  @SerialName("institution_id") val institutionId: Long? = null,
+  @SerialName("specialty_id") val specialtyId: Long? = null,
+  @SerialName("academic_year_id") val academicYearId: Long? = null,
+  @SerialName("cohort_id") val cohortId: Long? = null,
   @SerialName("week_number") val weekNumber: Int,
   @SerialName("title") val title: String,
   @SerialName("summary") val summary: String,
@@ -52,12 +58,15 @@ data class SupabaseLectureDto(
 @Serializable
 data class SupabaseAnnouncementDto(
   @SerialName("id") val id: Long? = null,
+  @SerialName("institution_id") val institutionId: Long? = null,
+  @SerialName("specialty_id") val specialtyId: Long? = null,
+  @SerialName("academic_year_id") val academicYearId: Long? = null,
+  @SerialName("cohort_id") val cohortId: Long? = null,
   @SerialName("title") val title: String,
   @SerialName("content") val content: String,
   @SerialName("author") val author: String,
   @SerialName("date") val date: String,
   @SerialName("urgency") val urgency: String = "عام",
-  @SerialName("specialty_id") val specialtyId: Long? = null,
   @SerialName("visibility_scope") val visibilityScope: String = "تخصص كامل",
   @SerialName("target_groups") val targetGroups: String = "الكل"
 )
@@ -65,8 +74,10 @@ data class SupabaseAnnouncementDto(
 @Serializable
 data class SupabaseScheduleDto(
   @SerialName("id") val id: Long? = null,
+  @SerialName("institution_id") val institutionId: Long? = null,
   @SerialName("specialty_id") val specialtyId: Long,
   @SerialName("academic_year_id") val academicYearId: Long = 1,
+  @SerialName("cohort_id") val cohortId: Long? = null,
   @SerialName("day_of_week") val dayOfWeek: Int,
   @SerialName("start_time") val startTime: String,
   @SerialName("end_time") val endTime: String,
@@ -82,6 +93,10 @@ data class SupabaseScheduleDto(
 data class SupabaseExamDto(
   @SerialName("id") val id: Long? = null,
   @SerialName("module_id") val moduleId: Long,
+  @SerialName("institution_id") val institutionId: Long? = null,
+  @SerialName("specialty_id") val specialtyId: Long? = null,
+  @SerialName("academic_year_id") val academicYearId: Long? = null,
+  @SerialName("cohort_id") val cohortId: Long? = null,
   @SerialName("module_name") val moduleName: String,
   @SerialName("title") val title: String,
   @SerialName("exam_date") val examDate: String,

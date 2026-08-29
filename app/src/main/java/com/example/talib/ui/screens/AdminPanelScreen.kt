@@ -1,11 +1,17 @@
 package com.example.talib.ui.screens
 
+import android.net.Uri
+import android.provider.OpenableColumns
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
@@ -15,8 +21,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -30,6 +38,7 @@ fun AdminPanelScreen(
   viewModel: TalibViewModel,
   onNavigate: (ScreenRoute) -> Unit
 ) {
+  val context = LocalContext.current
   val modules by viewModel.allModules.collectAsStateWithLifecycle()
   val specialties by viewModel.specialties.collectAsStateWithLifecycle()
   val profile by viewModel.studentProfile.collectAsStateWithLifecycle()
@@ -37,128 +46,333 @@ fun AdminPanelScreen(
   val issueReports by viewModel.allIssueReports.collectAsStateWithLifecycle()
 
   val currentRole = profile?.userRole ?: "OWNER"
+  val canManageRoles = currentRole in listOf("OWNER", "SPECIALTY_ADMIN", "REPRESENTATIVE")
 
-  var selectedTab by remember { mutableStateOf(0) } // 0: رفع المحتوى الموحد, 1: إدارة المستخدمين والرتب, 2: التبليغات والشكاوى
+  var selectedTab by remember { mutableStateOf(0) }
 
   var showUploadDialog by remember { mutableStateOf(false) }
-  var uploadContentType by remember { mutableStateOf("محاضرة") } // محاضرة / إعلان / حصة جدول / امتحان
-  var visibilityScope by remember { mutableStateOf("تخصص كامل") } // تخصص كامل / عدة أفواج محددة / فوج واحد
+  var uploadContentType by remember { mutableStateOf("محاضرة") }
+  var visibilityScope by remember { mutableStateOf("تخصص كامل") }
   var targetGroupText by remember { mutableStateOf("الكل") }
+
+  // Hierarchical scope IDs
+  var scopeInstitutionId by remember { mutableStateOf(1L) }
+  var scopeSpecialtyId by remember { mutableStateOf(profile?.selectedSpecialtyId ?: 1L) }
+  var scopeYearId by remember { mutableStateOf(profile?.selectedYearId ?: 1L) }
+  var scopeCohortId by remember { mutableStateOf<Long?>(null) }
 
   var statusMessage by remember { mutableStateOf<String?>(null) }
   var showAddStudentDialog by remember { mutableStateOf(false) }
 
-  // Upload Content Dialog with mandatory Visibility Scope
+  // State for Role Assignment Dialog
+  var targetUserForRole by remember { mutableStateOf<AppUser?>(null) }
+  var targetUserForDeletion by remember { mutableStateOf<AppUser?>(null) }
+
+  // Delete User Confirmation Dialog
+  if (targetUserForDeletion != null) {
+    val userToDelete = targetUserForDeletion!!
+    AlertDialog(
+      onDismissRequest = { targetUserForDeletion = null },
+      icon = {
+        Icon(
+          Icons.Default.DeleteForever,
+          contentDescription = null,
+          tint = MaterialTheme.colorScheme.error,
+          modifier = Modifier.size(36.dp)
+        )
+      },
+      title = {
+        Text("تأكيد حذف المستخدم نهائياً", fontWeight = FontWeight.Bold)
+      },
+      text = {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+          Text(
+            text = "هل أنت متأكد من حذف الحساب الخاص بـ:",
+            style = MaterialTheme.typography.bodyMedium
+          )
+          Surface(
+            shape = RoundedCornerShape(8.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+            modifier = Modifier.fillMaxWidth()
+          ) {
+            Column(modifier = Modifier.padding(10.dp)) {
+              Text(userToDelete.fullName, fontWeight = FontWeight.Bold)
+              Text(
+                "${userToDelete.email} • رتبته: ${
+                  when (userToDelete.role) {
+                    "SPECIALTY_ADMIN" -> "مسؤول تخصص"
+                    "REPRESENTATIVE" -> "ممثل فوج"
+                    else -> "طالب"
+                  }
+                }",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+              )
+            }
+          }
+          Text(
+            text = "سيتم إلغاء وصول هذا المستخدم وسحب كافة صلاحياته من المنظومة.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error
+          )
+        }
+      },
+      confirmButton = {
+        Button(
+          onClick = {
+            viewModel.deleteUser(userToDelete)
+            statusMessage = "تم حذف المستخدم [${userToDelete.fullName}] وسحب صلاحياته بنجاح 🗑️"
+            targetUserForDeletion = null
+          },
+          colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+          shape = RoundedCornerShape(10.dp)
+        ) {
+          Text("تأكيد الحذف النهائي")
+        }
+      },
+      dismissButton = {
+        TextButton(onClick = { targetUserForDeletion = null }) {
+          Text("إلغاء")
+        }
+      }
+    )
+  }
+
+  // Upload Content Dialog
   if (showUploadDialog) {
     var selectedModId by remember { mutableStateOf(modules.firstOrNull()?.id ?: 1L) }
     var titleText by remember { mutableStateOf("") }
     var contentText by remember { mutableStateOf("") }
-    var extraDetailText by remember { mutableStateOf("") }
     var urgencyText by remember { mutableStateOf("عام") }
     var modExpanded by remember { mutableStateOf(false) }
 
+    // Dynamic Week & Duration
+    var weekNumberText by remember { mutableStateOf("1") }
+    var durationMinutesText by remember { mutableStateOf("90") }
+
+    // Real File Picker State
+    var selectedFileUri by remember { mutableStateOf<Uri?>(null) }
+    var selectedFileName by remember { mutableStateOf("") }
+    var isUploadingFile by remember { mutableStateOf(false) }
+    var uploadError by remember { mutableStateOf<String?>(null) }
+
+    val filePickerLauncher = rememberLauncherForActivityResult(
+      contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+      selectedFileUri = uri
+      if (uri != null) {
+        // Query display name
+        context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+          val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+          if (cursor.moveToFirst() && nameIndex >= 0) {
+            selectedFileName = cursor.getString(nameIndex)
+          }
+        }
+        if (selectedFileName.isBlank()) {
+          selectedFileName = "lecture_${System.currentTimeMillis()}.pdf"
+        }
+      }
+    }
+
     AlertDialog(
-      onDismissRequest = { showUploadDialog = false },
+      onDismissRequest = { if (!isUploadingFile) showUploadDialog = false },
       title = {
         Text("رفع ونشر: $uploadContentType", fontWeight = FontWeight.Black)
       },
       text = {
-        Column(
+        LazyColumn(
           modifier = Modifier.fillMaxWidth(),
           verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
           // Mandatory Visibility Scope selector
-          Card(
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f))
-          ) {
-            Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-              Text("من يرى هذا المحتوى؟ (نطاق الظهور الإلزامي):", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
-              Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                listOf("تخصص كامل", "عدة أفواج محددة", "فوج واحد").forEach { sc ->
-                  FilterChip(
-                    selected = visibilityScope == sc,
-                    onClick = {
-                      visibilityScope = sc
-                      targetGroupText = if (sc == "تخصص كامل") "الكل" else if (sc == "فوج واحد") (profile?.groupNumber ?: "الفوج 03") else "الأفواج 01، 02، 03"
-                    },
-                    label = { Text(sc, fontSize = 10.sp) }
+          item {
+            Card(
+              shape = RoundedCornerShape(12.dp),
+              colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f))
+            ) {
+              Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("من يرى هذا المحتوى؟ (نطاق الظهور الإلزامي):", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                  listOf("تخصص كامل", "عدة أفواج محددة", "فوج واحد").forEach { sc ->
+                    FilterChip(
+                      selected = visibilityScope == sc,
+                      onClick = {
+                        visibilityScope = sc
+                        targetGroupText = when (sc) {
+                          "تخصص كامل" -> "الكل"
+                          "فوج واحد" -> profile?.groupNumber ?: "الفوج 01"
+                          else -> "الأفواج 01، 02، 03"
+                        }
+                      },
+                      label = { Text(sc, fontSize = 10.sp) }
+                    )
+                  }
+                }
+                if (visibilityScope != "تخصص كامل") {
+                  OutlinedTextField(
+                    value = targetGroupText,
+                    onValueChange = { targetGroupText = it },
+                    label = { Text("الأفواج المستهدفة") },
+                    modifier = Modifier.fillMaxWidth()
                   )
                 }
-              }
-              if (visibilityScope != "تخصص كامل") {
-                OutlinedTextField(
-                  value = targetGroupText,
-                  onValueChange = { targetGroupText = it },
-                  label = { Text("الأفواج المستهدفة") },
-                  modifier = Modifier.fillMaxWidth()
-                )
               }
             }
           }
 
           if (uploadContentType == "محاضرة" || uploadContentType == "امتحان") {
-            ExposedDropdownMenuBox(
-              expanded = modExpanded,
-              onExpandedChange = { modExpanded = !modExpanded }
-            ) {
-              OutlinedTextField(
-                value = modules.find { it.id == selectedModId }?.name ?: "اختر المقياس",
-                onValueChange = {},
-                readOnly = true,
-                label = { Text("المقياس الدراسي") },
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = modExpanded) },
-                modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable, true)
-              )
-              ExposedDropdownMenu(
+            item {
+              ExposedDropdownMenuBox(
                 expanded = modExpanded,
-                onDismissRequest = { modExpanded = false }
+                onExpandedChange = { modExpanded = !modExpanded }
               ) {
-                modules.forEach { mod ->
-                  DropdownMenuItem(
-                    text = { Text(mod.name) },
-                    onClick = {
-                      selectedModId = mod.id
-                      modExpanded = false
-                    }
-                  )
+                OutlinedTextField(
+                  value = modules.find { it.id == selectedModId }?.name ?: "اختر المقياس",
+                  onValueChange = {},
+                  readOnly = true,
+                  label = { Text("المقياس الدراسي") },
+                  trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = modExpanded) },
+                  modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable, true)
+                )
+                ExposedDropdownMenu(
+                  expanded = modExpanded,
+                  onDismissRequest = { modExpanded = false }
+                ) {
+                  modules.forEach { mod ->
+                    DropdownMenuItem(
+                      text = { Text(mod.name) },
+                      onClick = {
+                        selectedModId = mod.id
+                        modExpanded = false
+                      }
+                    )
+                  }
                 }
               }
             }
           }
 
-          OutlinedTextField(
-            value = titleText,
-            onValueChange = { titleText = it },
-            label = { Text(if (uploadContentType == "إعلان") "عنوان الإعلان" else "العنوان / الموضوع") },
-            modifier = Modifier.fillMaxWidth()
-          )
-
-          OutlinedTextField(
-            value = contentText,
-            onValueChange = { contentText = it },
-            label = { Text(if (uploadContentType == "إعلان") "نص الإعلان" else "الملخص / التفاصيل") },
-            minLines = 2,
-            modifier = Modifier.fillMaxWidth()
-          )
-
-          if (uploadContentType == "محاضرة") {
+          item {
             OutlinedTextField(
-              value = extraDetailText.ifBlank { "lecture_file.pdf" },
-              onValueChange = { extraDetailText = it },
-              label = { Text("اسم ملف PDF المرفق") },
+              value = titleText,
+              onValueChange = { titleText = it },
+              label = { Text(if (uploadContentType == "إعلان") "عنوان الإعلان" else "العنوان / الموضوع") },
               modifier = Modifier.fillMaxWidth()
             )
           }
 
-          if (uploadContentType == "إعلان") {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-              listOf("عام", "هام", "عاجل").forEach { urg ->
-                FilterChip(
-                  selected = urgencyText == urg,
-                  onClick = { urgencyText = urg },
-                  label = { Text(urg) }
+          item {
+            OutlinedTextField(
+              value = contentText,
+              onValueChange = { contentText = it },
+              label = { Text(if (uploadContentType == "إعلان") "نص الإعلان" else "الملخص / التفاصيل") },
+              minLines = 2,
+              modifier = Modifier.fillMaxWidth()
+            )
+          }
+
+          // Specific dynamic fields for Lecture
+          if (uploadContentType == "محاضرة") {
+            item {
+              Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+              ) {
+                OutlinedTextField(
+                  value = weekNumberText,
+                  onValueChange = { weekNumberText = it.filter { char -> char.isDigit() } },
+                  label = { Text("رقم الأسبوع") },
+                  keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                  modifier = Modifier.weight(1f)
                 )
+
+                OutlinedTextField(
+                  value = durationMinutesText,
+                  onValueChange = { durationMinutesText = it.filter { char -> char.isDigit() } },
+                  label = { Text("المدة (دقيقة)") },
+                  keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                  modifier = Modifier.weight(1f)
+                )
+              }
+            }
+
+            // Real File Picker Card
+            item {
+              Card(
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+                modifier = Modifier.fillMaxWidth()
+              ) {
+                Column(
+                  modifier = Modifier.padding(12.dp),
+                  verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                  Text(
+                    text = "ملف المحاضرة (PDF حقيقي):",
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
+                  )
+
+                  if (selectedFileName.isNotBlank()) {
+                    Row(
+                      modifier = Modifier.fillMaxWidth(),
+                      verticalAlignment = Alignment.CenterVertically,
+                      horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                      Row(
+                        modifier = Modifier.weight(1f),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                      ) {
+                        Icon(Icons.Default.PictureAsPdf, contentDescription = null, tint = Color(0xFFE11D48))
+                        Text(
+                          text = selectedFileName,
+                          style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                          maxLines = 1
+                        )
+                      }
+                      IconButton(onClick = {
+                        selectedFileUri = null
+                        selectedFileName = ""
+                      }) {
+                        Icon(Icons.Default.Close, contentDescription = "حذف", tint = MaterialTheme.colorScheme.error)
+                      }
+                    }
+                  } else {
+                    OutlinedButton(
+                      onClick = { filePickerLauncher.launch("application/pdf") },
+                      modifier = Modifier.fillMaxWidth()
+                    ) {
+                      Icon(Icons.Default.UploadFile, contentDescription = null, modifier = Modifier.size(18.dp))
+                      Spacer(modifier = Modifier.width(8.dp))
+                      Text("اختيار ملف PDF من الجهاز")
+                    }
+                  }
+
+                  if (uploadError != null) {
+                    Text(
+                      text = uploadError ?: "",
+                      style = MaterialTheme.typography.labelSmall.copy(color = MaterialTheme.colorScheme.error)
+                    )
+                  }
+
+                  if (isUploadingFile) {
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                  }
+                }
+              }
+            }
+          }
+
+          if (uploadContentType == "إعلان") {
+            item {
+              Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf("عام", "هام", "عاجل").forEach { urg ->
+                  FilterChip(
+                    selected = urgencyText == urg,
+                    onClick = { urgencyText = urg },
+                    label = { Text(urg) }
+                  )
+                }
               }
             }
           }
@@ -166,17 +380,73 @@ fun AdminPanelScreen(
       },
       confirmButton = {
         Button(
+          enabled = !isUploadingFile && titleText.isNotBlank(),
           onClick = {
-            if (titleText.isNotBlank()) {
+            val parsedWeek = weekNumberText.toIntOrNull() ?: 1
+            val parsedDuration = durationMinutesText.toIntOrNull() ?: 90
+
+            if (uploadContentType == "محاضرة" && selectedFileUri != null) {
+              isUploadingFile = true
+              uploadError = null
+              try {
+                val inputStream = context.contentResolver.openInputStream(selectedFileUri!!)
+                val bytes = inputStream?.readBytes() ?: ByteArray(0)
+                inputStream?.close()
+
+                if (bytes.isNotEmpty()) {
+                  viewModel.uploadLecturePdf(selectedFileName, bytes) { result ->
+                    isUploadingFile = false
+                    result.fold(
+                      onSuccess = { publicUrl ->
+                        viewModel.addLecture(
+                          moduleId = selectedModId,
+                          weekNumber = parsedWeek,
+                          title = titleText,
+                          summary = contentText.ifBlank { "ملخص المحاضرة" },
+                          pdfFileName = selectedFileName,
+                          durationMinutes = parsedDuration,
+                          visibilityScope = visibilityScope,
+                          targetGroup = targetGroupText
+                        )
+                        showUploadDialog = false
+                        statusMessage = "تم رفع الملف ونشر المحاضرة بنجاح! 🚀"
+                      },
+                      onFailure = { err ->
+                        // Fallback: save locally and notify
+                        viewModel.addLecture(
+                          moduleId = selectedModId,
+                          weekNumber = parsedWeek,
+                          title = titleText,
+                          summary = contentText.ifBlank { "ملخص المحاضرة" },
+                          pdfFileName = selectedFileName,
+                          durationMinutes = parsedDuration,
+                          visibilityScope = visibilityScope,
+                          targetGroup = targetGroupText
+                        )
+                        showUploadDialog = false
+                        statusMessage = "تم حفظ المحاضرة محلياً (${err.localizedMessage ?: "خطأ سحابي"})"
+                      }
+                    )
+                  }
+                } else {
+                  isUploadingFile = false
+                  uploadError = "تعذر قراءة ملف الـ PDF المختار"
+                }
+              } catch (e: Exception) {
+                isUploadingFile = false
+                uploadError = "خطأ أثناء قراءة الملف: ${e.message}"
+              }
+            } else {
+              // Other content types or lecture without file
               when (uploadContentType) {
                 "محاضرة" -> {
                   viewModel.addLecture(
                     moduleId = selectedModId,
-                    weekNumber = 3,
+                    weekNumber = parsedWeek,
                     title = titleText,
                     summary = contentText.ifBlank { "ملخص المحاضرة" },
-                    pdfFileName = extraDetailText.ifBlank { "lecture.pdf" },
-                    durationMinutes = 90,
+                    pdfFileName = selectedFileName.ifBlank { "lecture.pdf" },
+                    durationMinutes = parsedDuration,
                     visibilityScope = visibilityScope,
                     targetGroup = targetGroupText
                   )
@@ -225,11 +495,151 @@ fun AdminPanelScreen(
           },
           shape = RoundedCornerShape(10.dp)
         ) {
-          Text("نشر فوري بدون مراجعة")
+          Text(if (isUploadingFile) "جارٍ الرفع..." else "نشر فوري بدون مراجعة")
         }
       },
       dismissButton = {
-        TextButton(onClick = { showUploadDialog = false }) { Text("إلغاء") }
+        TextButton(
+          enabled = !isUploadingFile,
+          onClick = { showUploadDialog = false }
+        ) { Text("إلغاء") }
+      }
+    )
+  }
+
+  // Hierarchy Role & Scope Assignment Dialog
+  if (targetUserForRole != null) {
+    val targetUser = targetUserForRole!!
+    var selectedNewRole by remember { mutableStateOf("REPRESENTATIVE") }
+    var selectedInstitution by remember { mutableStateOf("المدرسة العليا للأساتذة - بوزريعة") }
+    var selectedSpecName by remember { mutableStateOf(profile?.specialtyName ?: "اللغة والأدب العربي") }
+    var selectedYearName by remember { mutableStateOf(profile?.academicYearName ?: "السنة الثانية (L2)") }
+    var selectedGroupName by remember { mutableStateOf(targetUser.groupNumber) }
+
+    val institutionList = listOf("المدرسة العليا للأساتذة - بوزريعة", "جامعة العلوم والتكنولوجيا USTHB", "جامعة الجزائر 1")
+    val specList = listOf("اللغة والأدب العربي", "الإعلام الآلي وتطوير البرمجيات", "اللغة الإنجليزية")
+    val yearList = listOf("السنة الأولى (L1)", "السنة الثانية (L2)", "السنة الثالثة (L3)", "ماستر 1 (M1)")
+    val groupList = listOf("الفوج 01", "الفوج 02", "الفوج 03", "الفوج 04", "الفوج 05")
+
+    AlertDialog(
+      onDismissRequest = { targetUserForRole = null },
+      title = {
+        Text("تعيين رتبة ونطاق إشراف لـ: ${targetUser.fullName}", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+      },
+      text = {
+        LazyColumn(
+          modifier = Modifier.fillMaxWidth(),
+          verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+          item {
+            Text("اختر الرتبة الصادرة:", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+              if (currentRole == "OWNER") {
+                FilterChip(
+                  selected = selectedNewRole == "SPECIALTY_ADMIN",
+                  onClick = { selectedNewRole = "SPECIALTY_ADMIN" },
+                  label = { Text("مسؤول تخصص") }
+                )
+              }
+              FilterChip(
+                selected = selectedNewRole == "REPRESENTATIVE",
+                onClick = { selectedNewRole = "REPRESENTATIVE" },
+                label = { Text("ممثل فوج/دفعة") }
+              )
+              FilterChip(
+                selected = selectedNewRole == "STUDENT",
+                onClick = { selectedNewRole = "STUDENT" },
+                label = { Text("إرجاع كطالب") }
+              )
+            }
+          }
+
+          if (selectedNewRole != "STUDENT") {
+            item {
+              HorizontalDivider()
+              Text(
+                text = "تحديد شجرة النطاق الهرمي الإشرافي (Hierarchy Scope):",
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+              )
+            }
+
+            item {
+              Text("المؤسسة:", style = MaterialTheme.typography.labelSmall)
+              Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                institutionList.take(2).forEach { inst ->
+                  FilterChip(
+                    selected = selectedInstitution == inst,
+                    onClick = { selectedInstitution = inst },
+                    label = { Text(inst.substringBefore(" -"), fontSize = 11.sp) }
+                  )
+                }
+              }
+            }
+
+            item {
+              Text("التخصص:", style = MaterialTheme.typography.labelSmall)
+              Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                specList.take(2).forEach { sp ->
+                  FilterChip(
+                    selected = selectedSpecName == sp,
+                    onClick = { selectedSpecName = sp },
+                    label = { Text(sp, fontSize = 11.sp) }
+                  )
+                }
+              }
+            }
+
+            if (selectedNewRole == "REPRESENTATIVE") {
+              item {
+                Text("السنة الدراسية:", style = MaterialTheme.typography.labelSmall)
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                  yearList.take(3).forEach { yr ->
+                    FilterChip(
+                      selected = selectedYearName == yr,
+                      onClick = { selectedYearName = yr },
+                      label = { Text(yr, fontSize = 11.sp) }
+                    )
+                  }
+                }
+              }
+
+              item {
+                Text("الفوج المعني:", style = MaterialTheme.typography.labelSmall)
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                  groupList.take(4).forEach { grp ->
+                    FilterChip(
+                      selected = selectedGroupName == grp,
+                      onClick = { selectedGroupName = grp },
+                      label = { Text(grp, fontSize = 11.sp) }
+                    )
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      confirmButton = {
+        Button(
+          onClick = {
+            val constructedScope = when (selectedNewRole) {
+              "SPECIALTY_ADMIN" -> "$selectedInstitution • $selectedSpecName"
+              "REPRESENTATIVE" -> "$selectedSpecName • $selectedYearName • $selectedGroupName"
+              else -> "طالب"
+            }
+            viewModel.updateUserRole(targetUser.id, selectedNewRole, constructedScope)
+            statusMessage = "تم تعيين ${targetUser.fullName} بنجاح كـ [$selectedNewRole] بنطاق [$constructedScope]"
+            targetUserForRole = null
+          },
+          shape = RoundedCornerShape(10.dp)
+        ) {
+          Text("تأكيد التعيين والنطاق")
+        }
+      },
+      dismissButton = {
+        TextButton(onClick = { targetUserForRole = null }) {
+          Text("إلغاء")
+        }
       }
     )
   }
@@ -261,6 +671,13 @@ fun AdminPanelScreen(
             modifier = Modifier.fillMaxWidth()
           )
           OutlinedTextField(
+            value = sId,
+            onValueChange = { sId = it },
+            label = { Text("رقم التسجيل") },
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier.fillMaxWidth()
+          )
+          OutlinedTextField(
             value = sGroup,
             onValueChange = { sGroup = it },
             label = { Text("الفوج") },
@@ -272,21 +689,15 @@ fun AdminPanelScreen(
       confirmButton = {
         Button(
           onClick = {
-            if (sName.isNotBlank()) {
-              viewModel.addUser(
-                fullName = sName,
-                email = sEmail.ifBlank { "student@univ.dz" },
-                studentId = sId,
-                groupNumber = sGroup,
-                role = "STUDENT"
-              )
+            if (sName.isNotBlank() && sEmail.isNotBlank()) {
+              viewModel.addUser(sName, sEmail, sId, sGroup, "STUDENT")
               showAddStudentDialog = false
-              statusMessage = "تمت إضافة الطالب $sName لقائمة الفوج بنجاح."
+              statusMessage = "تمت إضافة الطالب $sName إلى قائمة الفوج بنجاح! 🎓"
             }
           },
           shape = RoundedCornerShape(10.dp)
         ) {
-          Text("إضافة الطالب")
+          Text("إضافة")
         }
       },
       dismissButton = {
@@ -303,24 +714,28 @@ fun AdminPanelScreen(
       TopAppBar(
         title = {
           Column {
-            Text("لوحة الإدارة والرتب الأكاديمية", fontWeight = FontWeight.Black, fontSize = 18.sp)
+            Text("لوحة الإدارة والرتب", fontWeight = FontWeight.Black, fontSize = 18.sp)
             Text(
               text = "رتبتك الحالية: ${
                 when (currentRole) {
-                  "OWNER" -> "المالك (Super Admin)"
-                  "SPECIALTY_ADMIN" -> "مسؤول التخصص"
-                  "REPRESENTATIVE" -> "ممثل الفوج / السنة"
-                  else -> "ممثل معتمد"
+                  "OWNER" -> "المالك العام للمنصة 👑"
+                  "SPECIALTY_ADMIN" -> "مسؤول تخصص 🏛️"
+                  "REPRESENTATIVE" -> "ممثل الفوج 🎓"
+                  else -> "طالب"
                 }
               }",
-              style = MaterialTheme.typography.bodySmall,
-              color = MaterialTheme.colorScheme.primary
+              style = MaterialTheme.typography.labelSmall.copy(color = MaterialTheme.colorScheme.primary)
             )
           }
         },
         navigationIcon = {
           IconButton(onClick = { onNavigate(ScreenRoute.HOME) }) {
             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "رجوع")
+          }
+        },
+        actions = {
+          IconButton(onClick = { showAddStudentDialog = true }) {
+            Icon(Icons.Default.PersonAdd, contentDescription = "إضافة طالب")
           }
         }
       )
@@ -331,72 +746,33 @@ fun AdminPanelScreen(
         .fillMaxSize()
         .padding(padding)
         .padding(horizontal = 16.dp),
-      verticalArrangement = Arrangement.spacedBy(16.dp),
-      contentPadding = PaddingValues(top = 8.dp, bottom = 90.dp)
+      verticalArrangement = Arrangement.spacedBy(14.dp),
+      contentPadding = PaddingValues(top = 10.dp, bottom = 24.dp)
     ) {
-      // Role Switcher Simulator for testing permissions
       item {
-        Card(
-          shape = RoundedCornerShape(16.dp),
-          colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)),
-          modifier = Modifier.fillMaxWidth()
-        ) {
-          Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("معاينة الصلاحيات حسب الرتبة:", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
-            Row(
-              modifier = Modifier.fillMaxWidth(),
-              horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-              listOf("OWNER", "SPECIALTY_ADMIN", "REPRESENTATIVE").forEach { r ->
-                FilterChip(
-                  selected = (profile?.userRole ?: "OWNER") == r,
-                  onClick = { viewModel.switchUserRole(r) },
-                  label = {
-                    Text(
-                      when (r) {
-                        "OWNER" -> "👑 المالك"
-                        "SPECIALTY_ADMIN" -> "🏛️ مسؤول تخصص"
-                        else -> "🎓 ممثل فوج"
-                      },
-                      fontSize = 11.sp
-                    )
-                  }
-                )
-              }
-            }
-          }
-        }
-      }
-
-      // Tab selector
-      item {
-        TabRow(
+        SecondaryScrollableTabRow(
           selectedTabIndex = selectedTab,
-          containerColor = MaterialTheme.colorScheme.surface
+          modifier = Modifier.fillMaxWidth()
         ) {
           Tab(
             selected = selectedTab == 0,
             onClick = { selectedTab = 0 },
-            text = { Text("السحابة والمزامنة", fontWeight = FontWeight.Bold) },
-            icon = { Icon(Icons.Default.CloudSync, contentDescription = null) }
+            text = { Text("السحابة والمزامنة", fontWeight = FontWeight.Bold) }
           )
           Tab(
             selected = selectedTab == 1,
             onClick = { selectedTab = 1 },
-            text = { Text("رفع ونشر المحتوى", fontWeight = FontWeight.Bold) },
-            icon = { Icon(Icons.Default.CloudUpload, contentDescription = null) }
+            text = { Text("رفع المحتوى", fontWeight = FontWeight.Bold) }
           )
           Tab(
             selected = selectedTab == 2,
             onClick = { selectedTab = 2 },
-            text = { Text("المستخدمين والرتب", fontWeight = FontWeight.Bold) },
-            icon = { Icon(Icons.Default.ManageAccounts, contentDescription = null) }
+            text = { Text("إدارة الرتب والأفواج", fontWeight = FontWeight.Bold) }
           )
           Tab(
             selected = selectedTab == 3,
             onClick = { selectedTab = 3 },
-            text = { Text("التبليغات (${issueReports.size})", fontWeight = FontWeight.Bold) },
-            icon = { Icon(Icons.Default.ReportProblem, contentDescription = null) }
+            text = { Text("التبليغات (${issueReports.size})", fontWeight = FontWeight.Bold) }
           )
         }
       }
@@ -495,7 +871,7 @@ fun AdminPanelScreen(
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
               Text("معلومات الجداول السحابية (Schema):", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
               Text(
-                "تمت تهيئة الجداول في التطبيق: modules, lectures, announcements, schedules, exams مع دعم التسلسل الفوري ومزامنة الـ Room Database.",
+                "تمت تهيئة الجداول في التطبيق: modules, lectures, announcements, schedules, exams مع دعم النطاقات الهرمية بالمعرفات (institution_id, specialty_id, year_id, cohort_id).",
                 style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
               )
               Surface(
@@ -547,9 +923,7 @@ fun AdminPanelScreen(
                 modifier = Modifier.fillMaxWidth()
               ) {
                 Row(
-                  modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
+                  modifier = Modifier.padding(16.dp),
                   verticalAlignment = Alignment.CenterVertically,
                   horizontalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
@@ -557,7 +931,7 @@ fun AdminPanelScreen(
                     modifier = Modifier
                       .size(46.dp)
                       .clip(CircleShape)
-                      .background(MaterialTheme.colorScheme.primaryContainer),
+                      .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
                     contentAlignment = Alignment.Center
                   ) {
                     Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
@@ -568,20 +942,7 @@ fun AdminPanelScreen(
                     Text(subtitle, style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant))
                   }
 
-                  Button(
-                    onClick = {
-                      uploadContentType = when {
-                        title.contains("محاضرة") -> "محاضرة"
-                        title.contains("إعلان") -> "إعلان"
-                        title.contains("جدول") -> "حصة جدول"
-                        else -> "امتحان"
-                      }
-                      showUploadDialog = true
-                    },
-                    shape = RoundedCornerShape(8.dp)
-                  ) {
-                    Text("رفع الآن")
-                  }
+                  Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
               }
             }
@@ -589,7 +950,7 @@ fun AdminPanelScreen(
         }
       }
 
-      // TAB 2: قائمة المستخدمين والرتب والترقية
+      // TAB 2: إدارة المستخدمين والرتب
       if (selectedTab == 2) {
         item {
           Row(
@@ -598,19 +959,13 @@ fun AdminPanelScreen(
             verticalAlignment = Alignment.CenterVertically
           ) {
             Text(
-              text = if (currentRole == "OWNER") "كافة مستخدمي المنظومة والترقيات:" else "قائمة طلبة الفوج:",
+              text = "قائمة الطلاب وممثلي الأفواج:",
               style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black)
             )
-
-            Button(
-              onClick = { showAddStudentDialog = true },
-              shape = RoundedCornerShape(8.dp),
-              contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
-            ) {
-              Icon(Icons.Default.PersonAdd, contentDescription = null, modifier = Modifier.size(16.dp))
-              Spacer(modifier = Modifier.width(4.dp))
-              Text("إضافة طالب", fontSize = 12.sp)
-            }
+            Text(
+              text = "${users.size} مسجل",
+              style = MaterialTheme.typography.labelMedium.copy(color = MaterialTheme.colorScheme.primary)
+            )
           }
         }
 
@@ -618,14 +973,12 @@ fun AdminPanelScreen(
           Card(
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
             modifier = Modifier.fillMaxWidth()
           ) {
             Column(
-              modifier = Modifier
-                .fillMaxWidth()
-                .padding(14.dp),
-              verticalArrangement = Arrangement.spacedBy(8.dp)
+              modifier = Modifier.padding(14.dp),
+              verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
               Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -687,32 +1040,53 @@ fun AdminPanelScreen(
                 }
               }
 
-              // Promotion buttons (Available for Owner & Specialty Admin)
-              if (currentRole == "OWNER") {
+              // Hierarchical Management: Role change and Delete user buttons
+              val userLevel = when (u.role) {
+                "OWNER" -> 4
+                "SPECIALTY_ADMIN" -> 3
+                "REPRESENTATIVE" -> 2
+                else -> 1 // STUDENT
+              }
+              val myLevel = when (currentRole) {
+                "OWNER" -> 4
+                "SPECIALTY_ADMIN" -> 3
+                "REPRESENTATIVE" -> 2
+                else -> 1
+              }
+
+              // A supervisor can manage and delete users whose rank is lower than theirs
+              val canDeleteThisUser = myLevel > userLevel && u.role != "OWNER"
+
+              if (canManageRoles && u.role != "OWNER") {
                 Row(
                   modifier = Modifier.fillMaxWidth(),
                   horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                  OutlinedButton(
-                    onClick = {
-                      viewModel.updateUserRole(u.id, "SPECIALTY_ADMIN", "تخصص كامل")
-                      statusMessage = "تمت ترقية ${u.fullName} إلى مسؤول تخصص 🏛️"
-                    },
-                    modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(4.dp)
+                  // Promotion & Scope Assignment Button
+                  Button(
+                    onClick = { targetUserForRole = u },
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.weight(1f)
                   ) {
-                    Text("ترقية لمسؤول تخصص", fontSize = 10.sp)
+                    Icon(Icons.Default.ManageAccounts, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("تعيين رتبة ⚙️", style = MaterialTheme.typography.labelMedium)
                   }
 
-                  OutlinedButton(
-                    onClick = {
-                      viewModel.updateUserRole(u.id, "REPRESENTATIVE", "فوج واحد")
-                      statusMessage = "تم تعيين ${u.fullName} كممثل للفوج 🎓"
-                    },
-                    modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(4.dp)
-                  ) {
-                    Text("تعيين كممثل", fontSize = 10.sp)
+                  // Delete User Button (Enabled strictly when supervisor rank is higher)
+                  if (canDeleteThisUser) {
+                    FilledTonalButton(
+                      onClick = { targetUserForDeletion = u },
+                      shape = RoundedCornerShape(10.dp),
+                      colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                        contentColor = MaterialTheme.colorScheme.error
+                      )
+                    ) {
+                      Icon(Icons.Default.PersonRemove, contentDescription = "حذف المستخدم", modifier = Modifier.size(18.dp))
+                      Spacer(modifier = Modifier.width(4.dp))
+                      Text("حذف 🗑️", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold))
+                    }
                   }
                 }
               }

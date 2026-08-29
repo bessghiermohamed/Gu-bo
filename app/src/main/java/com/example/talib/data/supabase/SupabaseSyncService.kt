@@ -10,8 +10,11 @@ import com.example.talib.data.local.ModuleCourse
 import com.example.talib.data.local.ScheduleItem
 import com.example.talib.data.local.Specialty
 import com.example.talib.data.local.TalibDatabase
+import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.auth.providers.builtin.Email
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Columns
+import io.github.jan.supabase.storage.storage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -257,10 +260,44 @@ class SupabaseSyncService(
   companion object {
     const val SUPABASE_SCHEMA_SQL = """
 -- Supabase Schema for Talib Academic App (SQL)
+-- Updated with integer foreign keys / IDs for precise hierarchical scoping
+
+create table if not exists institutions (
+  id bigint primary key generated always as identity,
+  name text not null,
+  code text not null,
+  created_at timestamp with time zone default timezone('utc'::text, now())
+);
+
+create table if not exists specialties (
+  id bigint primary key generated always as identity,
+  institution_id bigint references institutions(id),
+  name_ar text not null,
+  code text not null,
+  icon_name text default 'book',
+  description text default '',
+  created_at timestamp with time zone default timezone('utc'::text, now())
+);
+
+create table if not exists academic_years (
+  id bigint primary key generated always as identity,
+  specialty_id bigint references specialties(id),
+  year_name text not null,
+  semester int default 1
+);
+
+create table if not exists cohorts (
+  id bigint primary key generated always as identity,
+  year_id bigint references academic_years(id),
+  name text not null -- e.g. "الفوج 01", "الفوج 02"
+);
+
 create table if not exists modules (
   id bigint primary key generated always as identity,
+  institution_id bigint,
   specialty_id bigint not null default 1,
   academic_year_id bigint not null default 1,
+  cohort_id bigint,
   name text not null,
   code text not null,
   coefficient double precision default 2.0,
@@ -278,6 +315,10 @@ create table if not exists modules (
 create table if not exists lectures (
   id bigint primary key generated always as identity,
   module_id bigint not null,
+  institution_id bigint,
+  specialty_id bigint,
+  academic_year_id bigint,
+  cohort_id bigint,
   week_number int default 1,
   title text not null,
   summary text default '',
@@ -294,12 +335,15 @@ create table if not exists lectures (
 
 create table if not exists announcements (
   id bigint primary key generated always as identity,
+  institution_id bigint,
+  specialty_id bigint default 1,
+  academic_year_id bigint,
+  cohort_id bigint,
   title text not null,
   content text not null,
   author text default 'الإدارة',
   date text default '',
   urgency text default 'عام',
-  specialty_id bigint default 1,
   visibility_scope text default 'تخصص كامل',
   target_groups text default 'الكل',
   created_at timestamp with time zone default timezone('utc'::text, now())
@@ -307,8 +351,10 @@ create table if not exists announcements (
 
 create table if not exists schedules (
   id bigint primary key generated always as identity,
+  institution_id bigint,
   specialty_id bigint default 1,
   academic_year_id bigint default 1,
+  cohort_id bigint,
   day_of_week int not null,
   start_time text not null,
   end_time text not null,
@@ -323,6 +369,10 @@ create table if not exists schedules (
 create table if not exists exams (
   id bigint primary key generated always as identity,
   module_id bigint default 1,
+  institution_id bigint,
+  specialty_id bigint,
+  academic_year_id bigint,
+  cohort_id bigint,
   module_name text not null,
   title text not null,
   exam_date text not null,
@@ -334,5 +384,70 @@ create table if not exists exams (
   target_group text default 'الكل'
 );
 """
+  }
+
+  /**
+   * Upload actual PDF file to Supabase Storage bucket 'lectures'
+   * Returns public download URL on success
+   */
+  suspend fun uploadLecturePdf(fileName: String, byteArray: ByteArray): Result<String> = withContext(Dispatchers.IO) {
+    try {
+      val bucket = client.storage.from("lectures")
+      val safeFileName = "${System.currentTimeMillis()}_${fileName.replace(" ", "_")}"
+      bucket.upload(safeFileName, byteArray) {
+        upsert = true
+      }
+      val publicUrl = bucket.publicUrl(safeFileName)
+      Result.success(publicUrl)
+    } catch (e: Exception) {
+      Log.e(TAG, "Failed to upload PDF to Supabase Storage: ${e.message}")
+      Result.failure(e)
+    }
+  }
+
+  /**
+   * Supabase Auth: Sign in with email and password
+   */
+  suspend fun signInWithEmail(email: String, pass: String): Result<String> = withContext(Dispatchers.IO) {
+    try {
+      client.auth.signInWith(Email) {
+        this.email = email
+        this.password = pass
+      }
+      Result.success("تم تسجيل الدخول السحابي بنجاح")
+    } catch (e: Exception) {
+      Log.w(TAG, "Supabase sign in notice: ${e.message}")
+      // Allow seamless offline login if local credentials match or network is unavailable
+      Result.failure(e)
+    }
+  }
+
+  /**
+   * Supabase Auth: Sign up new student account
+   */
+  suspend fun signUpWithEmail(email: String, pass: String): Result<String> = withContext(Dispatchers.IO) {
+    try {
+      client.auth.signUpWith(Email) {
+        this.email = email
+        this.password = pass
+      }
+      Result.success("تم إنشاء الحساب السحابي بنجاح")
+    } catch (e: Exception) {
+      Log.w(TAG, "Supabase sign up notice: ${e.message}")
+      Result.failure(e)
+    }
+  }
+
+  /**
+   * Supabase Auth: Sign out
+   */
+  suspend fun signOut(): Result<Unit> = withContext(Dispatchers.IO) {
+    try {
+      client.auth.signOut()
+      Result.success(Unit)
+    } catch (e: Exception) {
+      Log.w(TAG, "Supabase sign out notice: ${e.message}")
+      Result.success(Unit)
+    }
   }
 }

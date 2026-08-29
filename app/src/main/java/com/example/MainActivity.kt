@@ -55,7 +55,8 @@ class MainActivity : ComponentActivity() {
               topBar = {
                 if (currentScreen != ScreenRoute.OFFLINE_CACHE &&
                   currentScreen != ScreenRoute.MY_FILES &&
-                  currentScreen != ScreenRoute.ADMIN
+                  currentScreen != ScreenRoute.ADMIN &&
+                  currentScreen != ScreenRoute.LOGIN
                 ) {
                   HeaderSection(
                     isDarkMode = isDarkMode,
@@ -75,7 +76,7 @@ class MainActivity : ComponentActivity() {
                         talibViewModel.navigateTo(ScreenRoute.ADMIN)
                       }
                     },
-                    onBackClick = if (currentScreen != ScreenRoute.HOME) {
+                    onBackClick = if (currentScreen != ScreenRoute.HOME && currentScreen != ScreenRoute.LOGIN) {
                       { talibViewModel.navigateBack() }
                     } else null
                   )
@@ -83,7 +84,8 @@ class MainActivity : ComponentActivity() {
               },
               bottomBar = {
                 if (currentScreen != ScreenRoute.ADMIN &&
-                  currentScreen != ScreenRoute.OFFLINE_CACHE
+                  currentScreen != ScreenRoute.OFFLINE_CACHE &&
+                  currentScreen != ScreenRoute.LOGIN
                 ) {
                   TalibBottomNavBar(
                     currentScreen = currentScreen,
@@ -113,6 +115,10 @@ class MainActivity : ComponentActivity() {
                   label = "screen_navigation_anim"
                 ) { screen ->
                   when (screen) {
+                    ScreenRoute.LOGIN -> LoginScreen(
+                      viewModel = talibViewModel,
+                      onLoginSuccess = { talibViewModel.navigateTo(ScreenRoute.HOME) }
+                    )
                     ScreenRoute.HOME -> HomeScreen(
                       viewModel = talibViewModel,
                       onNavigate = { route -> talibViewModel.navigateTo(route) }

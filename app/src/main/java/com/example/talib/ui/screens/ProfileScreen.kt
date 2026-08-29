@@ -36,8 +36,47 @@ fun ProfileScreen(
   var showEditProfileDialog by remember { mutableStateOf(false) }
   var showAcademicPathDialog by remember { mutableStateOf(false) }
   var showAdminPinDialog by remember { mutableStateOf(false) }
+  var showLogoutConfirmDialog by remember { mutableStateOf(false) }
   var adminPinInput by remember { mutableStateOf("") }
   var adminPinError by remember { mutableStateOf(false) }
+
+  // Logout Confirmation Dialog
+  if (showLogoutConfirmDialog) {
+    AlertDialog(
+      onDismissRequest = { showLogoutConfirmDialog = false },
+      icon = {
+        Icon(
+          Icons.AutoMirrored.Filled.Logout,
+          contentDescription = null,
+          tint = MaterialTheme.colorScheme.error,
+          modifier = Modifier.size(32.dp)
+        )
+      },
+      title = { Text("تسجيل الخروج من الحساب", fontWeight = FontWeight.Bold) },
+      text = {
+        Text("هل ترغب بالفعل في تسجيل الخروج من حساب [${profile?.fullName ?: "الطالب"}]؟ سيتم نقلك إلى شاشة تسجيل الدخول.")
+      },
+      confirmButton = {
+        Button(
+          onClick = {
+            showLogoutConfirmDialog = false
+            viewModel.logout {
+              onNavigate(ScreenRoute.LOGIN)
+            }
+          },
+          colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+          shape = RoundedCornerShape(10.dp)
+        ) {
+          Text("نعم، تسجيل الخروج")
+        }
+      },
+      dismissButton = {
+        TextButton(onClick = { showLogoutConfirmDialog = false }) {
+          Text("إلغاء")
+        }
+      }
+    )
+  }
 
   // Admin PIN Protection Dialog
   if (showAdminPinDialog) {
@@ -293,7 +332,7 @@ fun ProfileScreen(
                 style = MaterialTheme.typography.labelSmall.copy(color = Color.White.copy(alpha = 0.8f))
               )
               Text(
-                text = profile?.fullName ?: "محمد البشير بن علي",
+                text = profile?.fullName ?: "محمد بن علي",
                 style = MaterialTheme.typography.titleLarge.copy(
                   color = Color.White,
                   fontWeight = FontWeight.Black,
@@ -302,18 +341,17 @@ fun ProfileScreen(
               )
             }
 
-            Box(
-              modifier = Modifier
-                .size(52.dp)
-                .clip(CircleShape)
-                .background(Color.White.copy(alpha = 0.2f)),
-              contentAlignment = Alignment.Center
+            Surface(
+              color = Color(0xFFD4AF37),
+              shape = RoundedCornerShape(8.dp)
             ) {
-              Icon(
-                imageVector = Icons.Default.School,
-                contentDescription = null,
-                tint = Color.White,
-                modifier = Modifier.size(30.dp)
+              Text(
+                text = profile?.studentId ?: "2026-TLB-8459",
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                style = MaterialTheme.typography.labelSmall.copy(
+                  color = Color(0xFF1E293B),
+                  fontWeight = FontWeight.Black
+                )
               )
             }
           }
@@ -353,10 +391,19 @@ fun ProfileScreen(
             }
           }
 
-          Text(
-            text = "${profile?.institution ?: "المدرسة العليا للأساتذة - بوزريعة"} • ${profile?.faculty ?: "كلية الآداب"}",
-            style = MaterialTheme.typography.bodySmall.copy(color = Color.White.copy(alpha = 0.9f))
-          )
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+          ) {
+            Text(
+              text = "${profile?.institution ?: "المدرسة العليا للأساتذة - بوزريعة"}",
+              style = MaterialTheme.typography.bodySmall.copy(color = Color.White.copy(alpha = 0.9f))
+            )
+            Text(
+              text = profile?.email ?: "mohamedbessghier8@gmail.com",
+              style = MaterialTheme.typography.labelSmall.copy(color = Color.White.copy(alpha = 0.75f))
+            )
+          }
         }
       }
     }
@@ -645,6 +692,70 @@ fun ProfileScreen(
           }
         }
       }
+    }
+
+    // 6. Logout Action Card
+    item {
+      Card(
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        modifier = Modifier.fillMaxWidth()
+      ) {
+        Column(
+          modifier = Modifier.padding(14.dp),
+          verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+          Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+          ) {
+            Box(
+              modifier = Modifier
+                .size(38.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.errorContainer),
+              contentAlignment = Alignment.Center
+            ) {
+              Icon(
+                imageVector = Icons.AutoMirrored.Filled.Logout,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.error,
+                modifier = Modifier.size(20.dp)
+              )
+            }
+
+            Column(modifier = Modifier.weight(1f)) {
+              Text("تسجيل الخروج", fontWeight = FontWeight.Bold)
+              Text(
+                text = "إنهاء الجلسة الحالية والعودة لشاشة تسجيل الدخول",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+              )
+            }
+          }
+
+          FilledTonalButton(
+            onClick = { showLogoutConfirmDialog = true },
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.filledTonalButtonColors(
+              containerColor = MaterialTheme.colorScheme.errorContainer,
+              contentColor = MaterialTheme.colorScheme.error
+            ),
+            modifier = Modifier
+              .fillMaxWidth()
+              .testTag("profile_logout_button")
+          ) {
+            Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("تسجيل الخروج من الحساب", fontWeight = FontWeight.Bold)
+          }
+        }
+      }
+    }
+
+    item {
+      Spacer(modifier = Modifier.height(16.dp))
     }
   }
 }

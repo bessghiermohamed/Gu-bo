@@ -8,6 +8,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class TalibViewModel(application: Application) : AndroidViewModel(application) {
@@ -856,9 +857,133 @@ class TalibViewModel(application: Application) : AndroidViewModel(application) {
     }
   }
 
+  fun uploadLecturePdf(
+    fileName: String,
+    byteArray: ByteArray,
+    onResult: (Result<String>) -> Unit
+  ) {
+    viewModelScope.launch(Dispatchers.IO) {
+      val result = supabaseSyncService.uploadLecturePdf(fileName, byteArray)
+      withContext(Dispatchers.Main) {
+        onResult(result)
+      }
+    }
+  }
+
   fun deleteLecture(lecture: Lecture) {
     viewModelScope.launch(Dispatchers.IO) {
       repository.deleteLecture(lecture)
+    }
+  }
+
+  // Auth & Session Management
+  private val _isAuthenticated = MutableStateFlow(true)
+  val isAuthenticated: StateFlow<Boolean> = _isAuthenticated.asStateFlow()
+
+  private val _isAuthLoading = MutableStateFlow(false)
+  val isAuthLoading: StateFlow<Boolean> = _isAuthLoading.asStateFlow()
+
+  private val _authStatusMessage = MutableStateFlow<String?>(null)
+  val authStatusMessage: StateFlow<String?> = _authStatusMessage.asStateFlow()
+
+  fun loginUser(email: String, password: String, onSuccess: () -> Unit) {
+    viewModelScope.launch {
+      _isAuthLoading.value = true
+      _authStatusMessage.value = null
+      
+      // Try Supabase auth in background
+      val supabaseResult = supabaseSyncService.signInWithEmail(email, password)
+      
+      // Look up user or match roles
+      val users = repository.allUsers.first()
+      val matchedUser = users.find { it.email.equals(email.trim(), ignoreCase = true) }
+      
+      val roleDetermined = when {
+        email.contains("admin") || email.contains("owner") -> "OWNER"
+        email.contains("specialty") -> "SPECIALTY_ADMIN"
+        email.contains("delegate") || email.contains("rep") -> "REPRESENTATIVE"
+        matchedUser != null -> matchedUser.role
+        else -> "STUDENT"
+      }
+      
+      val currentProfile = repository.studentProfile.first()
+      val updatedProfile = (currentProfile ?: StudentProfile()).copy(
+        email = email.trim(),
+        fullName = matchedUser?.fullName ?: (if (roleDetermined == "OWNER") "المالك (Super Admin)" else if (roleDetermined == "SPECIALTY_ADMIN") "مسؤول التخصص" else if (roleDetermined == "REPRESENTATIVE") "ممثل الفوج 03" else "طالب جامعي"),
+        userRole = roleDetermined,
+        groupNumber = matchedUser?.groupNumber ?: (currentProfile?.groupNumber ?: "الفوج 03"),
+        isConfigured = true
+      )
+      
+      repository.updateStudentProfile(updatedProfile)
+      _isAuthenticated.value = true
+      _isAuthLoading.value = false
+      _currentScreen.value = ScreenRoute.HOME
+      onSuccess()
+    }
+  }
+
+  fun signUpUser(
+    fullName: String,
+    email: String,
+    password: String,
+    studentId: String,
+    groupNumber: String,
+    onSuccess: () -> Unit
+  ) {
+    viewModelScope.launch {
+      _isAuthLoading.value = true
+      _authStatusMessage.value = null
+      
+      val supabaseResult = supabaseSyncService.signUpWithEmail(email, password)
+      
+      // Save newly registered user to local database
+      val newUser = AppUser(
+        fullName = fullName,
+        email = email.trim(),
+        studentId = studentId,
+        specialtyName = "اللغة والأدب العربي",
+        yearName = "السنة الثانية (L2)",
+        groupNumber = groupNumber,
+        role = "STUDENT"
+      )
+      repository.insertUser(newUser)
+      
+      val currentProfile = repository.studentProfile.first()
+      val updatedProfile = (currentProfile ?: StudentProfile()).copy(
+        fullName = fullName,
+        email = email.trim(),
+        studentId = studentId,
+        groupNumber = groupNumber,
+        userRole = "STUDENT",
+        isConfigured = true
+      )
+      repository.updateStudentProfile(updatedProfile)
+      
+      _isAuthenticated.value = true
+      _isAuthLoading.value = false
+      _currentScreen.value = ScreenRoute.HOME
+      onSuccess()
+    }
+  }
+
+  fun logout(onComplete: () -> Unit) {
+    viewModelScope.launch {
+      _isLoading.value = true
+      _loadingMessage.value = "جاري تسجيل الخروج..."
+      supabaseSyncService.signOut()
+      _isAuthenticated.value = false
+      _currentScreen.value = ScreenRoute.LOGIN
+      _isLoading.value = false
+      onComplete()
+    }
+  }
+
+  fun continueAsGuest(onSuccess: () -> Unit) {
+    viewModelScope.launch {
+      _isAuthenticated.value = true
+      _currentScreen.value = ScreenRoute.HOME
+      onSuccess()
     }
   }
 
@@ -870,6 +995,7 @@ class TalibViewModel(application: Application) : AndroidViewModel(application) {
 }
 
 enum class ScreenRoute(val titleAr: String) {
+  LOGIN("تسجيل الدخول"),
   HOME("الرئيسية"),
   COURSES("المقررات"),
   LECTURES("المحاضرات والملفات"),
