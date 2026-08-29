@@ -63,6 +63,11 @@ class MainActivity : ComponentActivity() {
                     currentScreen = currentScreen,
                     isLoading = isLoading,
                     onRefresh = { talibViewModel.refreshCourseContent() },
+                    onNotificationsClick = {
+                      if (currentScreen != ScreenRoute.NOTIFICATIONS_CENTER) {
+                        talibViewModel.navigateTo(ScreenRoute.NOTIFICATIONS_CENTER)
+                      }
+                    },
                     onAdminClick = {
                       if (currentScreen == ScreenRoute.ADMIN) {
                         talibViewModel.navigateTo(ScreenRoute.HOME)

@@ -458,65 +458,190 @@ fun ProfileScreen(
       }
     }
 
-    // 3. Admin / Professor Portal Launcher Card
+    // 3. Quick Academic Features (التقويم، المكتبة، الحضور)
     item {
       Card(
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-          containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.8f)
-        ),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = Modifier.fillMaxWidth()
       ) {
         Column(
-          modifier = Modifier
-            .fillMaxWidth()
-            .padding(18.dp),
-          verticalArrangement = Arrangement.spacedBy(10.dp)
+          modifier = Modifier.fillMaxWidth().padding(16.dp),
+          verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-          Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-          ) {
-            Row(
-              verticalAlignment = Alignment.CenterVertically,
-              horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-              Box(
-                modifier = Modifier
-                  .size(44.dp)
-                  .clip(CircleShape)
-                  .background(MaterialTheme.colorScheme.primary),
-                contentAlignment = Alignment.Center
-              ) {
-                Icon(
-                  imageVector = Icons.Default.AdminPanelSettings,
-                  contentDescription = null,
-                  tint = Color.White
-                )
-              }
+          Text(
+            text = "الخدمات والمراجع الأكاديمية",
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+          )
 
-              Column {
-                Text(
-                  text = "بوابة إدارة المحتوى والأستاذ",
-                  style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Black)
-                )
-                Text(
-                  text = "إضافة مقاييس، محاضرات، ملفات PDF، وإعلانات",
-                  style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onPrimaryContainer)
-                )
+          ListItem(
+            headlineContent = { Text("التقويم الأكاديمي الجامعي", fontWeight = FontWeight.SemiBold) },
+            supportingContent = { Text("مواعيد السداسيات، العطل الرسمية، وفترات الامتحانات") },
+            leadingContent = {
+              Icon(Icons.Default.DateRange, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            },
+            trailingContent = {
+              IconButton(onClick = { onNavigate(ScreenRoute.ACADEMIC_CALENDAR) }) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBackIos, contentDescription = null, modifier = Modifier.size(16.dp))
               }
             }
-          }
+          )
 
-          Button(
-            onClick = { showAdminPinDialog = true },
-            shape = RoundedCornerShape(12.dp),
-            modifier = Modifier.fillMaxWidth()
+          HorizontalDivider()
+
+          ListItem(
+            headlineContent = { Text("المكتبة والمراجع العامة", fontWeight = FontWeight.SemiBold) },
+            supportingContent = { Text("كتب ومصادر التخصص المعتمدة من الأساتذة") },
+            leadingContent = {
+              Icon(Icons.Default.MenuBook, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            },
+            trailingContent = {
+              IconButton(onClick = { onNavigate(ScreenRoute.LIBRARY) }) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBackIos, contentDescription = null, modifier = Modifier.size(16.dp))
+              }
+            }
+          )
+
+          HorizontalDivider()
+
+          ListItem(
+            headlineContent = { Text("سجل الحضور والغيابات", fontWeight = FontWeight.SemiBold) },
+            supportingContent = { Text("متابعة عدد الغيابات الشخصية لكل مقرر") },
+            leadingContent = {
+              Icon(Icons.Default.FactCheck, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            },
+            trailingContent = {
+              IconButton(onClick = { onNavigate(ScreenRoute.ATTENDANCE) }) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBackIos, contentDescription = null, modifier = Modifier.size(16.dp))
+              }
+            }
+          )
+        }
+      }
+    }
+
+    // 4. Supervisor Portal Entry (يظهر حصراً للمشرفين أو المالكين بحدود ذهبية مميزة)
+    val isSupervisor = profile?.userRole != "STUDENT" || profile?.isAdminMode == true
+    if (isSupervisor) {
+      item {
+        Card(
+          shape = RoundedCornerShape(20.dp),
+          border = androidx.compose.foundation.BorderStroke(1.5.dp, Color(0xFFD4AF37)),
+          colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+          ),
+          elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+          modifier = Modifier
+            .fillMaxWidth()
+            .testTag("supervisor_portal_card")
+        ) {
+          Column(
+            modifier = Modifier
+              .fillMaxWidth()
+              .padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
           ) {
-            Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(18.dp))
-            Spacer(modifier = Modifier.width(6.dp))
-            Text("دخول الأساتذة والإدارة (بوابة محمية)", fontWeight = FontWeight.Bold)
+            Row(
+              modifier = Modifier.fillMaxWidth(),
+              horizontalArrangement = Arrangement.SpaceBetween,
+              verticalAlignment = Alignment.CenterVertically
+            ) {
+              Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+              ) {
+                Box(
+                  modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFFD4AF37).copy(alpha = 0.18f)),
+                  contentAlignment = Alignment.Center
+                ) {
+                  Icon(
+                    imageVector = Icons.Default.Shield,
+                    contentDescription = null,
+                    tint = Color(0xFFB48C1C),
+                    modifier = Modifier.size(24.dp)
+                  )
+                }
+
+                Column {
+                  Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                      text = "لوحة الإشراف",
+                      style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Black,
+                        color = Color(0xFFB48C1C)
+                      )
+                    )
+                    Surface(
+                      color = Color(0xFFD4AF37).copy(alpha = 0.2f),
+                      shape = RoundedCornerShape(6.dp)
+                    ) {
+                      Text(
+                        text = profile?.userRole ?: "مشرف",
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                        style = MaterialTheme.typography.labelSmall.copy(
+                          fontWeight = FontWeight.Bold,
+                          color = Color(0xFFB48C1C)
+                        )
+                      )
+                    }
+                  }
+                  Text(
+                    text = "إدارة ونشر المحتوى، تعيين المشرفين، والتبليغات ضمن نطاقاتك",
+                    style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
+                  )
+                }
+              }
+            }
+
+            Button(
+              onClick = { onNavigate(ScreenRoute.ADMIN) },
+              shape = RoundedCornerShape(12.dp),
+              colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFF1B5E4B)
+              ),
+              modifier = Modifier.fillMaxWidth().testTag("open_supervision_panel_btn")
+            ) {
+              Icon(Icons.Default.Shield, contentDescription = null, modifier = Modifier.size(18.dp), tint = Color.White)
+              Spacer(modifier = Modifier.width(8.dp))
+              Text("فتح لوحة الإشراف ونطاقاتي", fontWeight = FontWeight.Bold, color = Color.White)
+            }
+          }
+        }
+      }
+    }
+
+    // 5. Role Switcher for Testing & Demonstration
+    item {
+      Card(
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+        modifier = Modifier.fillMaxWidth()
+      ) {
+        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+          Text(
+            text = "الرتبة والصلاحيات الحالية:",
+            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
+          )
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+          ) {
+            FilterChip(
+              selected = profile?.userRole == "STUDENT",
+              onClick = { viewModel.switchUserRole("STUDENT") },
+              label = { Text("طالب عادي") },
+              modifier = Modifier.weight(1f)
+            )
+            FilterChip(
+              selected = profile?.userRole == "REPRESENTATIVE" || profile?.userRole == "مستشار / ممثل القسم",
+              onClick = { viewModel.switchUserRole("REPRESENTATIVE") },
+              label = { Text("ممثل الفوج / مشرف") },
+              modifier = Modifier.weight(1f)
+            )
           }
         }
       }

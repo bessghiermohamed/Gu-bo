@@ -36,7 +36,9 @@ fun HeaderSection(
   onAdminClick: () -> Unit,
   onBackClick: (() -> Unit)? = null,
   isLoading: Boolean = false,
-  onRefresh: (() -> Unit)? = null
+  onRefresh: (() -> Unit)? = null,
+  onNotificationsClick: (() -> Unit)? = null,
+  unreadNotificationsCount: Int = 2
 ) {
   val iconRotation by animateFloatAsState(
     targetValue = if (isDarkMode) 180f else 0f,
@@ -105,7 +107,7 @@ fun HeaderSection(
             Text(
               text = when (currentScreen) {
                 ScreenRoute.HOME -> "رفيقك الأكاديمي الشامل"
-                ScreenRoute.ADMIN -> "لوحة تحكم الأستاذ والإدارة"
+                ScreenRoute.ADMIN -> "لوحة الإشراف وإدارة النطاقات"
                 else -> currentScreen.titleAr
               },
               style = MaterialTheme.typography.bodySmall.copy(
@@ -118,8 +120,44 @@ fun HeaderSection(
 
         Row(
           verticalAlignment = Alignment.CenterVertically,
-          horizontalArrangement = Arrangement.spacedBy(8.dp)
+          horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
+          // Notification Bell with Unread Badge (ثابت أعلى الهيدر لجميع الشاشات)
+          if (onNotificationsClick != null && currentScreen != ScreenRoute.ADMIN) {
+            IconButton(
+              onClick = onNotificationsClick,
+              modifier = Modifier
+                .size(42.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
+                .testTag("header_notifications_button")
+            ) {
+              BadgedBox(
+                badge = {
+                  if (unreadNotificationsCount > 0) {
+                    Badge(
+                      containerColor = Color(0xFFEF4444),
+                      contentColor = Color.White
+                    ) {
+                      Text(
+                        text = if (unreadNotificationsCount > 9) "9+" else unreadNotificationsCount.toString(),
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold
+                      )
+                    }
+                  }
+                }
+              ) {
+                Icon(
+                  imageVector = if (unreadNotificationsCount > 0) Icons.Default.NotificationsActive else Icons.Default.Notifications,
+                  contentDescription = "مركز الإشعارات والتنبيهات",
+                  tint = if (unreadNotificationsCount > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                  modifier = Modifier.size(22.dp)
+                )
+              }
+            }
+          }
+
           // If in Admin Screen, provide a clear Exit button
           if (currentScreen == ScreenRoute.ADMIN) {
             FilledTonalButton(
@@ -134,7 +172,7 @@ fun HeaderSection(
             ) {
               Icon(
                 imageVector = Icons.AutoMirrored.Filled.ExitToApp,
-                contentDescription = "الخروج من الإدارة",
+                contentDescription = "الخروج من الإشراف",
                 modifier = Modifier.size(16.dp)
               )
               Spacer(modifier = Modifier.width(4.dp))
@@ -146,12 +184,12 @@ fun HeaderSection(
           }
 
           // Refresh / Sync Button
-          if (onRefresh != null) {
+          if (onRefresh != null && currentScreen != ScreenRoute.ADMIN) {
             IconButton(
               onClick = onRefresh,
               enabled = !isLoading,
               modifier = Modifier
-                .size(44.dp)
+                .size(42.dp)
                 .clip(CircleShape)
                 .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
                 .testTag("header_refresh_button")
@@ -161,7 +199,7 @@ fun HeaderSection(
                 contentDescription = "تحديث ومزامنة المحتوى",
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier
-                  .size(22.dp)
+                  .size(20.dp)
                   .rotate(if (isLoading) refreshRotation else 0f)
               )
             }
@@ -171,7 +209,7 @@ fun HeaderSection(
           IconButton(
             onClick = onToggleTheme,
             modifier = Modifier
-              .size(44.dp)
+              .size(42.dp)
               .clip(CircleShape)
               .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
               .testTag("theme_toggle_button")
@@ -181,7 +219,7 @@ fun HeaderSection(
               contentDescription = "تبديل المظهر",
               tint = MaterialTheme.colorScheme.primary,
               modifier = Modifier
-                .size(22.dp)
+                .size(20.dp)
                 .rotate(iconRotation)
             )
           }
