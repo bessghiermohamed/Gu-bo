@@ -12,10 +12,42 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalCoroutinesApi::class)
 class TalibViewModel(application: Application) : AndroidViewModel(application) {
   private val repository: TalibRepository
+  private val supabaseSyncService: com.example.talib.data.supabase.SupabaseSyncService
 
   init {
     val db = TalibDatabase.getDatabase(application, viewModelScope)
-    repository = TalibRepository(db.talibDao())
+    val dao = db.talibDao()
+    repository = TalibRepository(dao)
+    supabaseSyncService = com.example.talib.data.supabase.SupabaseSyncService(dao)
+  }
+
+  val supabaseSyncState = supabaseSyncService.syncState
+
+  private val _supabaseConnectionStatus = MutableStateFlow<String?>(null)
+  val supabaseConnectionStatus: StateFlow<String?> = _supabaseConnectionStatus.asStateFlow()
+
+  fun testSupabaseConnection() {
+    viewModelScope.launch {
+      _supabaseConnectionStatus.value = "جاري اختبار الاتصال بـ Supabase..."
+      val result = supabaseSyncService.testConnection()
+      if (result.isSuccess) {
+        _supabaseConnectionStatus.value = result.getOrNull() ?: "تم الاتصال بنجاح!"
+      } else {
+        _supabaseConnectionStatus.value = "فشل الاتصال: ${result.exceptionOrNull()?.localizedMessage}"
+      }
+    }
+  }
+
+  fun syncWithSupabase() {
+    viewModelScope.launch {
+      _supabaseConnectionStatus.value = "جاري المزامنة مع Supabase..."
+      val res = supabaseSyncService.pullDataFromSupabase()
+      if (res.isSuccess) {
+        _supabaseConnectionStatus.value = "تمت المزامنة بنجاح! تم تحديث ${res.getOrNull()} عناصر سحابية."
+      } else {
+        _supabaseConnectionStatus.value = "خطأ في المزامنة: ${res.exceptionOrNull()?.localizedMessage}"
+      }
+    }
   }
 
   // UI Theme state

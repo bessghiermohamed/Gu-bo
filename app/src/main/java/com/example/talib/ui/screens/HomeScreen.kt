@@ -190,40 +190,7 @@ fun HomeScreen(
       }
     }
 
-    // 2. Notification Center Quick Alert Banner
-    item {
-      Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)),
-        onClick = { onNavigate(ScreenRoute.NOTIFICATIONS_CENTER) },
-        modifier = Modifier
-          .fillMaxWidth()
-          .padding(horizontal = 16.dp)
-      ) {
-        Row(
-          modifier = Modifier.padding(14.dp),
-          verticalAlignment = Alignment.CenterVertically,
-          horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-          Box(
-            modifier = Modifier
-              .size(40.dp)
-              .clip(CircleShape)
-              .background(MaterialTheme.colorScheme.primary),
-            contentAlignment = Alignment.Center
-          ) {
-            Icon(Icons.Default.NotificationsActive, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
-          }
-          Column(modifier = Modifier.weight(1f)) {
-            Text("مركز الإشعارات والتنبيهات الموحد", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
-            Text("تنبيهات الامتحانات، استطلاعات الرأي وتعديلات الجدول", style = MaterialTheme.typography.bodySmall)
-          }
-          Icon(Icons.AutoMirrored.Filled.ArrowBackIos, contentDescription = null, modifier = Modifier.size(14.dp))
-        }
-      }
-    }
-
-    // 3. Main Quick Action Grid
+    // 2. Main Quick Action Grid
     item {
       Column(
         modifier = Modifier
@@ -242,7 +209,7 @@ fun HomeScreen(
           horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
           GridActionCard(
-            title = "المقررات",
+            title = "المقررات الدراسية",
             icon = Icons.Default.Book,
             badgeText = "${modules.size} مقاييس",
             isDarkMode = isDarkMode,
@@ -252,142 +219,116 @@ fun HomeScreen(
           )
 
           GridActionCard(
-            title = "المحاضرات",
+            title = "المحاضرات والـ PDF",
             icon = Icons.Default.Description,
-            badgeText = "ملفات وPDF",
+            badgeText = "قراءة وتحميل",
             isDarkMode = isDarkMode,
-            delayOffsetMs = 500,
+            delayOffsetMs = 200,
             onClick = { onNavigate(ScreenRoute.LECTURES) },
             modifier = Modifier.weight(1f)
           )
         }
 
-        // Row 2: المكتبة العامة + التقويم الأكاديمي
+        // Row 2: الجدول الأسبوعي + الامتحانات
         Row(
           modifier = Modifier.fillMaxWidth(),
           horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-          GridActionCard(
-            title = "المكتبة والمراجع",
-            icon = Icons.Default.LocalLibrary,
-            badgeText = "${libraryReferences.size} مراجع عامة",
-            isDarkMode = isDarkMode,
-            delayOffsetMs = 150,
-            onClick = { onNavigate(ScreenRoute.LIBRARY) },
-            modifier = Modifier.weight(1f)
-          )
-
-          GridActionCard(
-            title = "التقويم الأكاديمي",
-            icon = Icons.Default.EventNote,
-            badgeText = "المواعيد والعطل",
-            isDarkMode = isDarkMode,
-            delayOffsetMs = 550,
-            onClick = { onNavigate(ScreenRoute.ACADEMIC_CALENDAR) },
-            modifier = Modifier.weight(1f)
-          )
-        }
-
-        // Row 3: سجل الحضور والغياب + استطلاعات الرأي
-        Row(
-          modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-          GridActionCard(
-            title = "الحضور والغياب",
-            icon = Icons.Default.HowToReg,
-            badgeText = "${attendanceRecords.size} سجلات",
-            isDarkMode = isDarkMode,
-            delayOffsetMs = 200,
-            onClick = { onNavigate(ScreenRoute.ATTENDANCE) },
-            modifier = Modifier.weight(1f)
-          )
-
-          GridActionCard(
-            title = "استطلاعات الفوج",
-            icon = Icons.Default.Poll,
-            badgeText = "${polls.size} تصويتات",
-            isDarkMode = isDarkMode,
-            delayOffsetMs = 600,
-            onClick = { onNavigate(ScreenRoute.POLLS) },
-            modifier = Modifier.weight(1f)
-          )
-        }
-
-        // Row 4: الواجبات + الجدول
-        Row(
-          modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-          GridActionCard(
-            title = "الواجبات",
-            icon = Icons.Default.EditNote,
-            badgeText = "مهام دراسية",
-            isDarkMode = isDarkMode,
-            delayOffsetMs = 250,
-            onClick = { onNavigate(ScreenRoute.ASSIGNMENTS) },
-            modifier = Modifier.weight(1f)
-          )
-
           GridActionCard(
             title = "الجدول الأسبوعي",
             icon = Icons.Default.CalendarMonth,
             badgeText = "التوقيت والقاعات",
             isDarkMode = isDarkMode,
-            delayOffsetMs = 650,
+            delayOffsetMs = 300,
             onClick = { onNavigate(ScreenRoute.SCHEDULE) },
+            modifier = Modifier.weight(1f)
+          )
+
+          GridActionCard(
+            title = "برنامج الامتحانات",
+            icon = Icons.Default.Science,
+            badgeText = "${exams.size} اختبارات",
+            isDarkMode = isDarkMode,
+            delayOffsetMs = 400,
+            onClick = { onNavigate(ScreenRoute.EXAMS) },
             modifier = Modifier.weight(1f)
           )
         }
 
-        // Row 5: الامتحانات + العلامات والمعدل
+        // Row 3: الواجبات الدراسية + العلامات والمعدل
         Row(
           modifier = Modifier.fillMaxWidth(),
           horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
           GridActionCard(
-            title = "الامتحانات",
-            icon = Icons.Default.Science,
-            badgeText = "${exams.size} اختبارات",
+            title = "الواجبات والمهام",
+            icon = Icons.Default.EditNote,
+            badgeText = "تسليمات ومتابعة",
             isDarkMode = isDarkMode,
-            delayOffsetMs = 300,
-            onClick = { onNavigate(ScreenRoute.EXAMS) },
+            delayOffsetMs = 500,
+            onClick = { onNavigate(ScreenRoute.ASSIGNMENTS) },
             modifier = Modifier.weight(1f)
           )
 
           GridActionCard(
-            title = "العلامات",
+            title = "العلامات وحساب المعدل",
             icon = Icons.Default.Equalizer,
-            badgeText = "حساب المعدل",
+            badgeText = if (gpa > 0.0) "$gpa / 20" else "حساب مباشر",
             isDarkMode = isDarkMode,
-            delayOffsetMs = 700,
+            delayOffsetMs = 600,
             onClick = { onNavigate(ScreenRoute.GRADES) },
             modifier = Modifier.weight(1f)
           )
         }
 
-        // Row 6: تبليغ عن مشكلة للممثل + المحتوى المحفوظ
+        // Row 4: ملفاتي وملاحظاتي + المحتوى المحفوظ أوفلاين
         Row(
           modifier = Modifier.fillMaxWidth(),
           horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
           GridActionCard(
-            title = "تبليغ عن مشكلة",
-            icon = Icons.Default.ReportProblem,
-            badgeText = "تواصل مع الممثل",
+            title = "ملفاتي وملاحظاتي",
+            icon = Icons.Default.Folder,
+            badgeText = "دفتر الطالب",
             isDarkMode = isDarkMode,
-            delayOffsetMs = 350,
-            onClick = { onNavigate(ScreenRoute.REPORT_ISSUE) },
+            delayOffsetMs = 700,
+            onClick = { onNavigate(ScreenRoute.MY_FILES) },
             modifier = Modifier.weight(1f)
           )
 
           GridActionCard(
             title = "المحتوى المحفوظ",
             icon = Icons.Default.CloudDone,
-            badgeText = "ذاكرة بدون إنترنت",
+            badgeText = "بدون إنترنت",
             isDarkMode = isDarkMode,
-            delayOffsetMs = 750,
+            delayOffsetMs = 800,
             onClick = { onNavigate(ScreenRoute.OFFLINE_CACHE) },
+            modifier = Modifier.weight(1f)
+          )
+        }
+
+        // Row 5: الإعلانات الأكاديمية + الفوج والزملاء
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+          GridActionCard(
+            title = "الإعلانات والتنبيهات",
+            icon = Icons.Default.Campaign,
+            badgeText = "${announcements.size} تنبيهات",
+            isDarkMode = isDarkMode,
+            delayOffsetMs = 900,
+            onClick = { onNavigate(ScreenRoute.ANNOUNCEMENTS) },
+            modifier = Modifier.weight(1f)
+          )
+
+          GridActionCard(
+            title = "الفوج والزملاء",
+            icon = Icons.Default.Groups,
+            badgeText = profile?.groupNumber ?: "الفوج 03",
+            isDarkMode = isDarkMode,
+            delayOffsetMs = 1000,
+            onClick = { onNavigate(ScreenRoute.GROUP) },
             modifier = Modifier.weight(1f)
           )
         }

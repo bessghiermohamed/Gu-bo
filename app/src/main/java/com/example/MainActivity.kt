@@ -38,11 +38,8 @@ class MainActivity : ComponentActivity() {
       val loadingMessage by talibViewModel.loadingMessage.collectAsStateWithLifecycle()
       val profile by talibViewModel.studentProfile.collectAsStateWithLifecycle()
 
-      // If user profile is not configured, show Onboarding
-      val showOnboarding = profile != null && !profile!!.isConfigured
-
       // Handle system back button navigation gracefully
-      BackHandler(enabled = currentScreen != ScreenRoute.HOME && !showOnboarding) {
+      BackHandler(enabled = currentScreen != ScreenRoute.HOME) {
         talibViewModel.navigateBack()
       }
 
@@ -52,160 +49,139 @@ class MainActivity : ComponentActivity() {
             modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colorScheme.background
           ) {
-            if (showOnboarding) {
-              OnboardingScreen(
-                viewModel = talibViewModel,
-                onComplete = {
-                  talibViewModel.navigateTo(ScreenRoute.HOME)
+            Scaffold(
+              modifier = Modifier.fillMaxSize(),
+              contentWindowInsets = WindowInsets(0, 0, 0, 0),
+              topBar = {
+                if (currentScreen != ScreenRoute.OFFLINE_CACHE &&
+                  currentScreen != ScreenRoute.MY_FILES &&
+                  currentScreen != ScreenRoute.ADMIN
+                ) {
+                  HeaderSection(
+                    isDarkMode = isDarkMode,
+                    onToggleTheme = { talibViewModel.toggleTheme() },
+                    currentScreen = currentScreen,
+                    isLoading = isLoading,
+                    onRefresh = { talibViewModel.refreshCourseContent() },
+                    onAdminClick = {
+                      if (currentScreen == ScreenRoute.ADMIN) {
+                        talibViewModel.navigateTo(ScreenRoute.HOME)
+                      } else {
+                        talibViewModel.navigateTo(ScreenRoute.ADMIN)
+                      }
+                    },
+                    onBackClick = if (currentScreen != ScreenRoute.HOME) {
+                      { talibViewModel.navigateBack() }
+                    } else null
+                  )
                 }
-              )
-            } else {
-              Scaffold(
-                modifier = Modifier.fillMaxSize(),
-                contentWindowInsets = WindowInsets(0, 0, 0, 0),
-                topBar = {
-                  if (currentScreen != ScreenRoute.OFFLINE_CACHE &&
-                    currentScreen != ScreenRoute.MY_FILES &&
-                    currentScreen != ScreenRoute.LIBRARY &&
-                    currentScreen != ScreenRoute.ACADEMIC_CALENDAR &&
-                    currentScreen != ScreenRoute.ATTENDANCE &&
-                    currentScreen != ScreenRoute.REPORT_ISSUE &&
-                    currentScreen != ScreenRoute.NOTIFICATIONS_CENTER &&
-                    currentScreen != ScreenRoute.POLLS &&
-                    currentScreen != ScreenRoute.ADMIN
-                  ) {
-                    HeaderSection(
-                      isDarkMode = isDarkMode,
-                      onToggleTheme = { talibViewModel.toggleTheme() },
-                      currentScreen = currentScreen,
-                      isLoading = isLoading,
-                      onRefresh = { talibViewModel.refreshCourseContent() },
-                      onAdminClick = {
-                        if (currentScreen == ScreenRoute.ADMIN) {
-                          talibViewModel.navigateTo(ScreenRoute.HOME)
-                        } else {
-                          talibViewModel.navigateTo(ScreenRoute.ADMIN)
-                        }
-                      },
-                      onBackClick = if (currentScreen != ScreenRoute.HOME) {
-                        { talibViewModel.navigateBack() }
-                      } else null
-                    )
-                  }
-                },
-                bottomBar = {
-                  if (currentScreen != ScreenRoute.ADMIN &&
-                    currentScreen != ScreenRoute.OFFLINE_CACHE &&
-                    currentScreen != ScreenRoute.LIBRARY &&
-                    currentScreen != ScreenRoute.ACADEMIC_CALENDAR &&
-                    currentScreen != ScreenRoute.ATTENDANCE &&
-                    currentScreen != ScreenRoute.REPORT_ISSUE &&
-                    currentScreen != ScreenRoute.NOTIFICATIONS_CENTER &&
-                    currentScreen != ScreenRoute.POLLS
-                  ) {
-                    TalibBottomNavBar(
-                      currentScreen = currentScreen,
+              },
+              bottomBar = {
+                if (currentScreen != ScreenRoute.ADMIN &&
+                  currentScreen != ScreenRoute.OFFLINE_CACHE
+                ) {
+                  TalibBottomNavBar(
+                    currentScreen = currentScreen,
+                    onNavigate = { route -> talibViewModel.navigateTo(route) }
+                  )
+                }
+              }
+            ) { paddingValues ->
+              Box(
+                modifier = Modifier
+                  .fillMaxSize()
+                  .padding(paddingValues)
+              ) {
+                // Global Loading Indicator placed at the top layer
+                GlobalLoadingIndicator(
+                  isLoading = isLoading,
+                  message = loadingMessage,
+                  isDarkMode = isDarkMode,
+                  modifier = Modifier.align(Alignment.TopCenter)
+                )
+
+                AnimatedContent(
+                  targetState = currentScreen,
+                  transitionSpec = {
+                    fadeIn() togetherWith fadeOut()
+                  },
+                  label = "screen_navigation_anim"
+                ) { screen ->
+                  when (screen) {
+                    ScreenRoute.HOME -> HomeScreen(
+                      viewModel = talibViewModel,
                       onNavigate = { route -> talibViewModel.navigateTo(route) }
                     )
-                  }
-                }
-              ) { paddingValues ->
-                Box(
-                  modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-                ) {
-                  // Global Loading Indicator placed at the top layer
-                  GlobalLoadingIndicator(
-                    isLoading = isLoading,
-                    message = loadingMessage,
-                    isDarkMode = isDarkMode,
-                    modifier = Modifier.align(Alignment.TopCenter)
-                  )
-
-                  AnimatedContent(
-                    targetState = currentScreen,
-                    transitionSpec = {
-                      fadeIn() togetherWith fadeOut()
-                    },
-                    label = "screen_navigation_anim"
-                  ) { screen ->
-                    when (screen) {
-                      ScreenRoute.HOME -> HomeScreen(
-                        viewModel = talibViewModel,
-                        onNavigate = { route -> talibViewModel.navigateTo(route) }
-                      )
-                      ScreenRoute.COURSES -> CoursesScreen(
-                        viewModel = talibViewModel,
-                        onNavigate = { route -> talibViewModel.navigateTo(route) }
-                      )
-                      ScreenRoute.LECTURES -> LecturesScreen(
-                        viewModel = talibViewModel
-                      )
-                      ScreenRoute.MY_FILES -> MyFilesScreen(
-                        viewModel = talibViewModel,
-                        onNavigate = { route -> talibViewModel.navigateTo(route) }
-                      )
-                      ScreenRoute.OFFLINE_CACHE -> OfflineVaultScreen(
-                        viewModel = talibViewModel,
-                        onNavigateBack = { talibViewModel.navigateBack() }
-                      )
-                      ScreenRoute.ASSIGNMENTS -> AssignmentsScreen(
-                        viewModel = talibViewModel
-                      )
-                      ScreenRoute.SCHEDULE -> ScheduleScreen(
-                        viewModel = talibViewModel
-                      )
-                      ScreenRoute.EXAMS -> ExamsScreen(
-                        viewModel = talibViewModel
-                      )
-                      ScreenRoute.GRADES -> GradesScreen(
-                        viewModel = talibViewModel
-                      )
-                      ScreenRoute.GROUP -> GroupScreen(
-                        viewModel = talibViewModel
-                      )
-                      ScreenRoute.ANNOUNCEMENTS -> AnnouncementsScreen(
-                        viewModel = talibViewModel
-                      )
-                      ScreenRoute.PROFILE -> ProfileScreen(
-                        viewModel = talibViewModel,
-                        onNavigate = { route -> talibViewModel.navigateTo(route) }
-                      )
-                      ScreenRoute.ADMIN -> AdminPanelScreen(
-                        viewModel = talibViewModel,
-                        onNavigate = { route -> talibViewModel.navigateTo(route) }
-                      )
-                      ScreenRoute.LIBRARY -> LibraryScreen(
-                        viewModel = talibViewModel,
-                        onNavigateBack = { talibViewModel.navigateBack() }
-                      )
-                      ScreenRoute.ACADEMIC_CALENDAR -> AcademicCalendarScreen(
-                        viewModel = talibViewModel,
-                        onNavigateBack = { talibViewModel.navigateBack() }
-                      )
-                      ScreenRoute.ATTENDANCE -> AttendanceScreen(
-                        viewModel = talibViewModel,
-                        onNavigateBack = { talibViewModel.navigateBack() }
-                      )
-                      ScreenRoute.REPORT_ISSUE -> ReportIssueScreen(
-                        viewModel = talibViewModel,
-                        onNavigateBack = { talibViewModel.navigateBack() }
-                      )
-                      ScreenRoute.NOTIFICATIONS_CENTER -> NotificationsCenterScreen(
-                        viewModel = talibViewModel,
-                        onNavigate = { route -> talibViewModel.navigateTo(route) },
-                        onNavigateBack = { talibViewModel.navigateBack() }
-                      )
-                      ScreenRoute.POLLS -> PollsScreen(
-                        viewModel = talibViewModel,
-                        onNavigateBack = { talibViewModel.navigateBack() }
-                      )
-                      ScreenRoute.ONBOARDING -> OnboardingScreen(
-                        viewModel = talibViewModel,
-                        onComplete = { talibViewModel.navigateTo(ScreenRoute.HOME) }
-                      )
-                    }
+                    ScreenRoute.COURSES -> CoursesScreen(
+                      viewModel = talibViewModel,
+                      onNavigate = { route -> talibViewModel.navigateTo(route) }
+                    )
+                    ScreenRoute.LECTURES -> LecturesScreen(
+                      viewModel = talibViewModel
+                    )
+                    ScreenRoute.MY_FILES -> MyFilesScreen(
+                      viewModel = talibViewModel,
+                      onNavigate = { route -> talibViewModel.navigateTo(route) }
+                    )
+                    ScreenRoute.OFFLINE_CACHE -> OfflineVaultScreen(
+                      viewModel = talibViewModel,
+                      onNavigateBack = { talibViewModel.navigateBack() }
+                    )
+                    ScreenRoute.ASSIGNMENTS -> AssignmentsScreen(
+                      viewModel = talibViewModel
+                    )
+                    ScreenRoute.SCHEDULE -> ScheduleScreen(
+                      viewModel = talibViewModel
+                    )
+                    ScreenRoute.EXAMS -> ExamsScreen(
+                      viewModel = talibViewModel
+                    )
+                    ScreenRoute.GRADES -> GradesScreen(
+                      viewModel = talibViewModel
+                    )
+                    ScreenRoute.GROUP -> GroupScreen(
+                      viewModel = talibViewModel
+                    )
+                    ScreenRoute.ANNOUNCEMENTS -> AnnouncementsScreen(
+                      viewModel = talibViewModel
+                    )
+                    ScreenRoute.PROFILE -> ProfileScreen(
+                      viewModel = talibViewModel,
+                      onNavigate = { route -> talibViewModel.navigateTo(route) }
+                    )
+                    ScreenRoute.ADMIN -> AdminPanelScreen(
+                      viewModel = talibViewModel,
+                      onNavigate = { route -> talibViewModel.navigateTo(route) }
+                    )
+                    ScreenRoute.LIBRARY -> LibraryScreen(
+                      viewModel = talibViewModel,
+                      onNavigateBack = { talibViewModel.navigateBack() }
+                    )
+                    ScreenRoute.ACADEMIC_CALENDAR -> AcademicCalendarScreen(
+                      viewModel = talibViewModel,
+                      onNavigateBack = { talibViewModel.navigateBack() }
+                    )
+                    ScreenRoute.ATTENDANCE -> AttendanceScreen(
+                      viewModel = talibViewModel,
+                      onNavigateBack = { talibViewModel.navigateBack() }
+                    )
+                    ScreenRoute.REPORT_ISSUE -> ReportIssueScreen(
+                      viewModel = talibViewModel,
+                      onNavigateBack = { talibViewModel.navigateBack() }
+                    )
+                    ScreenRoute.NOTIFICATIONS_CENTER -> NotificationsCenterScreen(
+                      viewModel = talibViewModel,
+                      onNavigate = { route -> talibViewModel.navigateTo(route) },
+                      onNavigateBack = { talibViewModel.navigateBack() }
+                    )
+                    ScreenRoute.POLLS -> PollsScreen(
+                      viewModel = talibViewModel,
+                      onNavigateBack = { talibViewModel.navigateBack() }
+                    )
+                    ScreenRoute.ONBOARDING -> OnboardingScreen(
+                      viewModel = talibViewModel,
+                      onComplete = { talibViewModel.navigateTo(ScreenRoute.HOME) }
+                    )
                   }
                 }
               }

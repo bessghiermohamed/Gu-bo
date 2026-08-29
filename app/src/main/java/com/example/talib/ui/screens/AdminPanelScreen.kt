@@ -377,18 +377,24 @@ fun AdminPanelScreen(
           Tab(
             selected = selectedTab == 0,
             onClick = { selectedTab = 0 },
-            text = { Text("رفع ونشر المحتوى", fontWeight = FontWeight.Bold) },
-            icon = { Icon(Icons.Default.CloudUpload, contentDescription = null) }
+            text = { Text("السحابة والمزامنة", fontWeight = FontWeight.Bold) },
+            icon = { Icon(Icons.Default.CloudSync, contentDescription = null) }
           )
           Tab(
             selected = selectedTab == 1,
             onClick = { selectedTab = 1 },
-            text = { Text("المستخدمين والرتب", fontWeight = FontWeight.Bold) },
-            icon = { Icon(Icons.Default.ManageAccounts, contentDescription = null) }
+            text = { Text("رفع ونشر المحتوى", fontWeight = FontWeight.Bold) },
+            icon = { Icon(Icons.Default.CloudUpload, contentDescription = null) }
           )
           Tab(
             selected = selectedTab == 2,
             onClick = { selectedTab = 2 },
+            text = { Text("المستخدمين والرتب", fontWeight = FontWeight.Bold) },
+            icon = { Icon(Icons.Default.ManageAccounts, contentDescription = null) }
+          )
+          Tab(
+            selected = selectedTab == 3,
+            onClick = { selectedTab = 3 },
             text = { Text("التبليغات (${issueReports.size})", fontWeight = FontWeight.Bold) },
             icon = { Icon(Icons.Default.ReportProblem, contentDescription = null) }
           )
@@ -410,8 +416,106 @@ fun AdminPanelScreen(
         }
       }
 
-      // TAB 0: واجهة الرفع الموحدة لأنواع المحتوى الأربعة
+      // TAB 0: إدارة الاتصال السحابي بـ Supabase والمزامنة الفورية
       if (selectedTab == 0) {
+        item {
+          Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)),
+            modifier = Modifier.fillMaxWidth()
+          ) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+              Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Box(
+                  modifier = Modifier
+                    .size(42.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFF3ECF8E)),
+                  contentAlignment = Alignment.Center
+                ) {
+                  Icon(Icons.Default.CloudSync, contentDescription = null, tint = Color.White)
+                }
+                Column {
+                  Text("الاتصال السحابي المباشر بـ Supabase", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black))
+                  Text("قاعدة بيانات سحابية وتخزين لحظي مع استمرارية العمل دون إنترنت", style = MaterialTheme.typography.bodySmall)
+                }
+              }
+
+              val syncStatus by viewModel.supabaseConnectionStatus.collectAsStateWithLifecycle()
+              if (syncStatus != null) {
+                Surface(
+                  shape = RoundedCornerShape(10.dp),
+                  color = MaterialTheme.colorScheme.surface,
+                  modifier = Modifier.fillMaxWidth()
+                ) {
+                  Row(
+                    modifier = Modifier.padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                  ) {
+                    Icon(Icons.Default.Info, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                    Text(syncStatus ?: "", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold))
+                  }
+                }
+              }
+
+              Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Button(
+                  onClick = { viewModel.testSupabaseConnection() },
+                  shape = RoundedCornerShape(10.dp),
+                  modifier = Modifier.weight(1f)
+                ) {
+                  Icon(Icons.Default.Sensors, contentDescription = null, modifier = Modifier.size(16.dp))
+                  Spacer(modifier = Modifier.width(6.dp))
+                  Text("اختبار الاتصال")
+                }
+
+                Button(
+                  onClick = { viewModel.syncWithSupabase() },
+                  shape = RoundedCornerShape(10.dp),
+                  colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)),
+                  modifier = Modifier.weight(1f)
+                ) {
+                  Icon(Icons.Default.Sync, contentDescription = null, modifier = Modifier.size(16.dp))
+                  Spacer(modifier = Modifier.width(6.dp))
+                  Text("مزامنة الآن")
+                }
+              }
+            }
+          }
+        }
+
+        item {
+          Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            modifier = Modifier.fillMaxWidth()
+          ) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+              Text("معلومات الجداول السحابية (Schema):", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
+              Text(
+                "تمت تهيئة الجداول في التطبيق: modules, lectures, announcements, schedules, exams مع دعم التسلسل الفوري ومزامنة الـ Room Database.",
+                style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
+              )
+              Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                modifier = Modifier.fillMaxWidth()
+              ) {
+                Text(
+                  text = "SUPABASE_URL: مُهيأ من إعدادات البيئة\nSUPABASE_ANON_KEY: مفتاح الاتصال المشفر مُدمج\nوضع التخزين: Offline-First مع التحديث عند توفر الإنترنت",
+                  modifier = Modifier.padding(10.dp),
+                  style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp)
+                )
+              }
+            }
+          }
+        }
+      }
+
+      // TAB 1: واجهة الرفع الموحدة لأنواع المحتوى الأربعة
+      if (selectedTab == 1) {
         item {
           Text(
             text = "شاشة الرفع الموحدة (نشر فوري بثقة كاملة):",
@@ -485,8 +589,8 @@ fun AdminPanelScreen(
         }
       }
 
-      // TAB 1: قائمة المستخدمين والرتب والترقية
-      if (selectedTab == 1) {
+      // TAB 2: قائمة المستخدمين والرتب والترقية
+      if (selectedTab == 2) {
         item {
           Row(
             modifier = Modifier.fillMaxWidth(),
@@ -617,8 +721,8 @@ fun AdminPanelScreen(
         }
       }
 
-      // TAB 2: التبليغات الواردة من الطلاب
-      if (selectedTab == 2) {
+      // TAB 3: التبليغات الواردة من الطلاب
+      if (selectedTab == 3) {
         item {
           Text(
             text = "التبليغات والشكاوى المباشرة الواردة من الطلبة:",
