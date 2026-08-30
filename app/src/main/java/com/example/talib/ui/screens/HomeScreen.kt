@@ -16,6 +16,9 @@ import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -50,6 +53,81 @@ fun HomeScreen(
   val polls by viewModel.allPolls.collectAsStateWithLifecycle()
   val libraryReferences by viewModel.allLibraryReferences.collectAsStateWithLifecycle()
   val attendanceRecords by viewModel.allAttendanceRecords.collectAsStateWithLifecycle()
+  val allAcademicGroups by viewModel.allAcademicGroups.collectAsStateWithLifecycle()
+  val allCohortGroups by viewModel.allCohortGroups.collectAsStateWithLifecycle()
+  val myJoinRequests by viewModel.myJoinRequests.collectAsStateWithLifecycle()
+
+  var showJoinGroupDialog by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+
+  val hasNoCohort = profile?.groupNumber.isNullOrBlank() || profile?.groupNumber == "بلا فوج"
+  val pendingMyRequest = myJoinRequests.firstOrNull { it.status == "PENDING" }
+
+  if (showJoinGroupDialog && profile != null) {
+    var selectedGrpId by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(allAcademicGroups.firstOrNull()?.id ?: 1L) }
+    val cohortsInGroup = androidx.compose.runtime.remember(selectedGrpId, allCohortGroups) {
+      allCohortGroups.filter { it.academicGroupId == selectedGrpId }.ifEmpty { allCohortGroups }
+    }
+    var selectedCohortId by androidx.compose.runtime.remember(cohortsInGroup) {
+      androidx.compose.runtime.mutableStateOf(cohortsInGroup.firstOrNull()?.id ?: 1L)
+    }
+
+    AlertDialog(
+      onDismissRequest = { showJoinGroupDialog = false },
+      title = { Text("طلب الانضمام إلى فوج دراسي 👥", fontWeight = FontWeight.Bold) },
+      text = {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+          Text(
+            text = "اختر المجموعة والفوج الدراسي الذي تنتمي إليه لإرسال طلب اعتماد للممثل:",
+            style = MaterialTheme.typography.bodyMedium
+          )
+          Text("1. اختر المجموعة الأكاديمية:", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
+          Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            allAcademicGroups.forEach { grp ->
+              FilterChip(
+                selected = selectedGrpId == grp.id,
+                onClick = { selectedGrpId = grp.id },
+                label = { Text(grp.groupName, fontSize = 11.sp) }
+              )
+            }
+          }
+
+          Text("2. اختر الفوج الفرعي:", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
+          Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            cohortsInGroup.forEach { cohort ->
+              FilterChip(
+                selected = selectedCohortId == cohort.id,
+                onClick = { selectedCohortId = cohort.id },
+                label = { Text(cohort.groupName, fontSize = 11.sp) }
+              )
+            }
+          }
+        }
+      },
+      confirmButton = {
+        Button(
+          onClick = {
+            val grp = allAcademicGroups.find { it.id == selectedGrpId }
+            val coh = allCohortGroups.find { it.id == selectedCohortId }
+            val gName = grp?.groupName ?: "المجموعة 01"
+            val cName = coh?.groupName ?: "الفوج 01"
+            viewModel.submitGroupJoinRequest(
+              groupId = selectedGrpId,
+              cohortId = selectedCohortId,
+              groupName = gName,
+              cohortName = cName
+            )
+            showJoinGroupDialog = false
+          },
+          shape = RoundedCornerShape(10.dp)
+        ) {
+          Text("إرسال طلب الانضمام")
+        }
+      },
+      dismissButton = {
+        TextButton(onClick = { showJoinGroupDialog = false }) { Text("إلغاء") }
+      }
+    )
+  }
 
   LazyColumn(
     modifier = Modifier
@@ -58,6 +136,82 @@ fun HomeScreen(
     contentPadding = PaddingValues(bottom = 90.dp, top = 8.dp),
     verticalArrangement = Arrangement.spacedBy(16.dp)
   ) {
+    // Cohort Join Request / Assignment Banner for Students
+    if (hasNoCohort) {
+      item {
+        Card(
+          shape = RoundedCornerShape(16.dp),
+          colors = CardDefaults.cardColors(
+            containerColor = if (pendingMyRequest != null) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+            else Color(0xFFFFFBEB)
+          ),
+          border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            if (pendingMyRequest != null) MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+            else Color(0xFFFDE68A)
+          ),
+          modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+        ) {
+          Row(
+            modifier = Modifier
+              .fillMaxWidth()
+              .padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+          ) {
+            Box(
+              modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(
+                  if (pendingMyRequest != null) MaterialTheme.colorScheme.primary
+                  else Color(0xFFD97706)
+                ),
+              contentAlignment = Alignment.Center
+            ) {
+              Icon(
+                imageVector = if (pendingMyRequest != null) Icons.Default.HourglassTop else Icons.Default.GroupAdd,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(20.dp)
+              )
+            }
+            Column(modifier = Modifier.weight(1f)) {
+              if (pendingMyRequest != null) {
+                Text(
+                  text = "طلب الانضمام قيد المراجعة ⏳",
+                  style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
+                )
+                Text(
+                  text = "تم إرسال طلبك لـ [${pendingMyRequest.groupName} • ${pendingMyRequest.cohortName}] بانتظار اعتماد الممثل أو المشرف.",
+                  style = MaterialTheme.typography.bodySmall
+                )
+              } else {
+                Text(
+                  text = "أنت غير ملحق بأي فوج دراسي بعد",
+                  style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, color = Color(0xFF92400E))
+                )
+                Text(
+                  text = "أرسل طلب انضمام لفوجك أو انتظر إلحاقك مباشرة من قِبل ممثل الفوج.",
+                  style = MaterialTheme.typography.bodySmall.copy(color = Color(0xFFB45309))
+                )
+              }
+            }
+            if (pendingMyRequest == null) {
+              Button(
+                onClick = { showJoinGroupDialog = true },
+                shape = RoundedCornerShape(10.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD97706))
+              ) {
+                Text("طلب انضمام", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+              }
+            }
+          }
+        }
+      }
+    }
     // 1. Hero Card with Student Greeting & Closed Academic Info
     item {
       Box(

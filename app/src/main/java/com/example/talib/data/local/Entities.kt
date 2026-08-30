@@ -41,25 +41,58 @@ data class AcademicTrack(
   val code: String = "TRACK"
 )
 
-// 0.1 الأفواج الدراسية (Cohort Groups)
+// 0.08 المجموعات الأكاديمية (Academic Groups - مثل المجموعة 01، المجموعة 02)
+@Entity(tableName = "academic_groups")
+data class AcademicGroup(
+  @PrimaryKey(autoGenerate = true) val id: Long = 0,
+  val specialtyId: Long,
+  val trackId: Long? = 1,
+  val academicYearId: Long,
+  val groupName: String, // "المجموعة 01", "المجموعة 02"
+  val code: String = "GRP"
+)
+
+// 0.1 الأفواج الدراسية الفرعية (Cohorts - مثل الفوج 01، الفوج 02، الفوج 03 داخل المجموعة)
 @Entity(tableName = "cohort_groups")
 data class CohortGroup(
   @PrimaryKey(autoGenerate = true) val id: Long = 0,
   val specialtyId: Long,
   val academicYearId: Long,
   val trackId: Long? = 1,
+  val academicGroupId: Long? = 1, // معرف المجموعة التي ينتمي إليها الفوج
   val groupName: String, // "الفوج 01", "الفوج 02", "الفوج 03"
   val subGroup: String = ""
 )
 
-// هيكل تعيين النطاق الخماسي بالمعرفات الرقمية الفعلية
-// النطاق = (المؤسسة) + (التخصص) + (الملمح) + (السنة) + (الفوج)
+// طلبات الانضمام إلى فوج دراسي (Group Join Requests)
+@Entity(tableName = "group_join_requests")
+data class GroupJoinRequest(
+  @PrimaryKey(autoGenerate = true) val id: Long = 0,
+  val studentId: Long,
+  val studentFullName: String,
+  val studentCardNumber: String,
+  val institutionId: Long,
+  val specialtyId: Long,
+  val trackId: Long,
+  val academicYearId: Long,
+  val academicGroupId: Long,
+  val cohortGroupId: Long,
+  val groupName: String, // اسم المجموعة
+  val cohortName: String, // اسم الفوج
+  val status: String = "PENDING", // PENDING, APPROVED, REJECTED
+  val requestedAt: String = "اليوم",
+  val reviewNote: String = ""
+)
+
+// هيكل تعيين النطاق السداسي بالمعرفات الرقمية الفعلية
+// النطاق = (المؤسسة) + (التخصص) + (الملمح) + (السنة) + (المجموعة) + (الفوج)
 data class ScopeAssignment(
   val institutionId: Long,   // إلزامي دائمًا
   val specialtyId: Long? = null,
   val trackId: Long? = null,
   val yearId: Long? = null,
-  val groupId: Long? = null,
+  val academicGroupId: Long? = null,
+  val cohortId: Long? = null,
   val scopeDescription: String = ""
 )
 
@@ -314,5 +347,6 @@ data class AppUser(
   val scopeSpecialtyId: Long? = null,
   val scopeTrackId: Long? = null,
   val scopeAcademicYearId: Long? = null,
+  val scopeAcademicGroupId: Long? = null,
   val scopeCohortGroupId: Long? = null
 )

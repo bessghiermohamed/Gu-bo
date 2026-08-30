@@ -15,7 +15,9 @@ import kotlinx.coroutines.launch
     Specialty::class,
     AcademicTrack::class,
     AcademicYear::class,
+    AcademicGroup::class,
     CohortGroup::class,
+    GroupJoinRequest::class,
     ModuleCourse::class,
     Lecture::class,
     CachedCourseMaterial::class,
@@ -33,7 +35,7 @@ import kotlinx.coroutines.launch
     ClassPoll::class,
     AppUser::class
   ],
-  version = 7,
+  version = 8,
   exportSchema = false
 )
 abstract class TalibDatabase : RoomDatabase() {
@@ -129,22 +131,28 @@ abstract class TalibDatabase : RoomDatabase() {
       val y7 = AcademicYear(id = 7, specialtyId = 2, yearName = "السنة الثالثة ISIL / SI (L3)", semester = 1)
       dao.insertAcademicYears(listOf(y1, y2, y3, y4, y5, y6, y7))
 
-      // 3. Cohort Groups (الأفواج المعرفة رقمياً بالدفعة والملمح)
-      val g1 = CohortGroup(id = 1, specialtyId = 1, academicYearId = 2, trackId = 1, groupName = "الفوج 01")
-      val g2 = CohortGroup(id = 2, specialtyId = 1, academicYearId = 2, trackId = 1, groupName = "الفوج 02")
-      val g3 = CohortGroup(id = 3, specialtyId = 1, academicYearId = 2, trackId = 1, groupName = "الفوج 03")
-      val g4 = CohortGroup(id = 4, specialtyId = 1, academicYearId = 2, trackId = 2, groupName = "الفوج 04")
-      val g5 = CohortGroup(id = 5, specialtyId = 1, academicYearId = 2, trackId = 3, groupName = "الفوج 05")
-      val g6 = CohortGroup(id = 6, specialtyId = 1, academicYearId = 1, trackId = 1, groupName = "الفوج 01")
-      val g7 = CohortGroup(id = 7, specialtyId = 1, academicYearId = 1, trackId = 1, groupName = "الفوج 02")
-      val g8 = CohortGroup(id = 8, specialtyId = 2, academicYearId = 6, trackId = 4, groupName = "الفوج 01 - G1")
-      val g9 = CohortGroup(id = 9, specialtyId = 2, academicYearId = 6, trackId = 5, groupName = "الفوج 02 - G2")
+      // 2.5 Academic Groups (المجموعات الأكاديمية - المستوى الخامس)
+      val grp1 = AcademicGroup(id = 1, specialtyId = 1, trackId = 1, academicYearId = 2, groupName = "المجموعة 01", code = "G1")
+      val grp2 = AcademicGroup(id = 2, specialtyId = 1, trackId = 1, academicYearId = 2, groupName = "المجموعة 02", code = "G2")
+      val grp3 = AcademicGroup(id = 3, specialtyId = 2, trackId = 4, academicYearId = 6, groupName = "المجموعة 01", code = "G1")
+      dao.insertAcademicGroups(listOf(grp1, grp2, grp3))
+
+      // 3. Cohorts (الأفواج الفرعية داخل المجموعات - المستوى السادس)
+      val g1 = CohortGroup(id = 1, specialtyId = 1, academicYearId = 2, trackId = 1, academicGroupId = 1, groupName = "الفوج 01")
+      val g2 = CohortGroup(id = 2, specialtyId = 1, academicYearId = 2, trackId = 1, academicGroupId = 1, groupName = "الفوج 02")
+      val g3 = CohortGroup(id = 3, specialtyId = 1, academicYearId = 2, trackId = 1, academicGroupId = 1, groupName = "الفوج 03")
+      val g4 = CohortGroup(id = 4, specialtyId = 1, academicYearId = 2, trackId = 2, academicGroupId = 2, groupName = "الفوج 04")
+      val g5 = CohortGroup(id = 5, specialtyId = 1, academicYearId = 2, trackId = 3, academicGroupId = 2, groupName = "الفوج 05")
+      val g6 = CohortGroup(id = 6, specialtyId = 1, academicYearId = 1, trackId = 1, academicGroupId = 1, groupName = "الفوج 01")
+      val g7 = CohortGroup(id = 7, specialtyId = 1, academicYearId = 1, trackId = 1, academicGroupId = 1, groupName = "الفوج 02")
+      val g8 = CohortGroup(id = 8, specialtyId = 2, academicYearId = 6, trackId = 4, academicGroupId = 3, groupName = "الفوج 01")
+      val g9 = CohortGroup(id = 9, specialtyId = 2, academicYearId = 6, trackId = 5, academicGroupId = 3, groupName = "الفوج 02")
       dao.insertCohortGroups(listOf(g1, g2, g3, g4, g5, g6, g7, g8, g9))
 
-      // 4. Initial System Users with Structured Scope IDs
+      // 4. Initial System Users with 6-level Hierarchy Scope IDs
       val uOwner = AppUser(
         id = 1,
-        fullName = "محمد بن علي (المالك)",
+        fullName = "فانغ يوان",
         email = "admin@univ.dz",
         studentId = "OWN-001",
         specialtyName = "اللغة والأدب العربي",
@@ -154,9 +162,11 @@ abstract class TalibDatabase : RoomDatabase() {
         representativeScope = "النظام الشامل",
         assignedSpecialtyId = 1,
         scopeInstitutionId = 1,
-        scopeSpecialtyId = 1,
-        scopeAcademicYearId = 2,
-        scopeCohortGroupId = 3
+        scopeSpecialtyId = null,
+        scopeTrackId = null,
+        scopeAcademicYearId = null,
+        scopeAcademicGroupId = null,
+        scopeCohortGroupId = null
       )
       val uSpecAdmin = AppUser(
         id = 2,
@@ -171,7 +181,9 @@ abstract class TalibDatabase : RoomDatabase() {
         assignedSpecialtyId = 1,
         scopeInstitutionId = 1,
         scopeSpecialtyId = 1,
+        scopeTrackId = null,
         scopeAcademicYearId = null,
+        scopeAcademicGroupId = null,
         scopeCohortGroupId = null
       )
       val uRep = AppUser(
@@ -183,11 +195,13 @@ abstract class TalibDatabase : RoomDatabase() {
         yearName = "السنة الثانية (L2)",
         groupNumber = "الفوج 03",
         role = "REPRESENTATIVE",
-        representativeScope = "الفوج 03",
+        representativeScope = "المجموعة 01 • الفوج 03",
         assignedSpecialtyId = 1,
         scopeInstitutionId = 1,
         scopeSpecialtyId = 1,
+        scopeTrackId = 1,
         scopeAcademicYearId = 2,
+        scopeAcademicGroupId = 1,
         scopeCohortGroupId = 3
       )
       val uStudent = AppUser(
@@ -203,7 +217,9 @@ abstract class TalibDatabase : RoomDatabase() {
         assignedSpecialtyId = 1,
         scopeInstitutionId = 1,
         scopeSpecialtyId = 1,
+        scopeTrackId = 1,
         scopeAcademicYearId = 2,
+        scopeAcademicGroupId = 1,
         scopeCohortGroupId = 3
       )
       dao.insertUsers(listOf(uOwner, uSpecAdmin, uRep, uStudent))

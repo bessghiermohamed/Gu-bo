@@ -188,8 +188,24 @@ class TalibViewModel(application: Application) : AndroidViewModel(application) {
   val allAcademicTracks: StateFlow<List<AcademicTrack>> = repository.allAcademicTracks
     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-  // All Cohort Groups
+  // All Academic Groups (المجموعات الأكاديمية - المستوى الخامس)
+  val allAcademicGroups: StateFlow<List<AcademicGroup>> = repository.allAcademicGroups
+    .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+  // All Cohort Groups (الأفواج الفرعية - المستوى السادس)
   val allCohortGroups: StateFlow<List<CohortGroup>> = repository.allCohortGroups
+    .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+  // Join Requests (طلبات الانضمام للأفواج)
+  val allJoinRequests: StateFlow<List<GroupJoinRequest>> = repository.allJoinRequests
+    .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+  // Join requests for the current student
+  val myJoinRequests: StateFlow<List<GroupJoinRequest>> = studentProfile
+    .flatMapLatest { prof ->
+      if (prof != null) repository.getJoinRequestsForStudent(prof.id)
+      else kotlinx.coroutines.flow.flowOf(emptyList())
+    }
     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
   // Selected Specialty ID & Year ID
@@ -673,7 +689,8 @@ class TalibViewModel(application: Application) : AndroidViewModel(application) {
           scopeSpecialtyId = scopeAssignment?.specialtyId,
           scopeTrackId = scopeAssignment?.trackId,
           scopeAcademicYearId = scopeAssignment?.yearId,
-          scopeCohortGroupId = scopeAssignment?.groupId,
+          scopeAcademicGroupId = scopeAssignment?.academicGroupId,
+          scopeCohortGroupId = scopeAssignment?.cohortId,
           representativeScope = scopeAssignment?.scopeDescription ?: when (newRole) {
             "SPECIALTY_ADMIN" -> "مسؤول تخصص"
             "REPRESENTATIVE" -> "ممثل فوج"
@@ -688,6 +705,99 @@ class TalibViewModel(application: Application) : AndroidViewModel(application) {
 
   fun updateUserRole(userId: Long, newRole: String, newScope: String) {
     updateUserRole(userId, newRole, ScopeAssignment(institutionId = 1L, scopeDescription = newScope))
+  }
+
+  // Group Join Requests Flow & Actions
+  fun submitGroupJoinRequest(
+    groupId: Long,
+    cohortId: Long,
+    groupName: String,
+    cohortName: String
+  ) {
+    val prof = studentProfile.value ?: return
+    viewModelScope.launch(Dispatchers.IO) {
+      val newReq = GroupJoinRequest(
+        studentId = prof.id,
+        studentFullName = prof.fullName,
+        studentCardNumber = prof.studentId,
+        institutionId = 1L,
+        specialtyId = prof.selectedSpecialtyId,
+        trackId = 1L,
+        academicYearId = prof.selectedYearId,
+        academicGroupId = groupId,
+        cohortGroupId = cohortId,
+        groupName = groupName,
+        cohortName = cohortName,
+        status = "PENDING"
+      )
+      repository.insertJoinRequest(newReq)
+    }
+  }
+
+  fun approveGroupJoinRequest(request: GroupJoinRequest) {
+    viewModelScope.launch(Dispatchers.IO) {
+      repository.updateJoinRequest(request.copy(status = "APPROVED"))
+      // If student is currently active profile, update profile group
+      val currentProf = studentProfile.value
+      if (currentProf != null && currentProf.id == request.studentId) {
+        val updated = currentProf.copy(
+          groupNumber = "${request.groupName} • ${request.cohortName}"
+        )
+        repository.insertStudentProfile(updated)
+      }
+      // Also update in app_users
+      val users = repository.allUsers.first()
+      val targetUser = users.find { it.studentId == request.studentCardNumber || it.id == request.studentId }
+      if (targetUser != null) {
+        repository.updateUser(
+          targetUser.copy(
+            groupNumber = "${request.groupName} • ${request.cohortName}",
+            scopeAcademicGroupId = request.academicGroupId,
+            scopeCohortGroupId = request.cohortGroupId
+          )
+        )
+      }
+    }
+  }
+
+  fun rejectGroupJoinRequest(request: GroupJoinRequest, note: String = "") {
+    viewModelScope.launch(Dispatchers.IO) {
+      repository.updateJoinRequest(request.copy(status = "REJECTED", reviewNote = note))
+    }
+  }
+
+  fun deleteGroupJoinRequest(request: GroupJoinRequest) {
+    viewModelScope.launch(Dispatchers.IO) {
+      repository.deleteJoinRequest(request)
+    }
+  }
+
+  fun directlyAssignStudentToGroup(
+    studentId: Long,
+    groupName: String,
+    cohortName: String,
+    academicGroupId: Long,
+    cohortId: Long
+  ) {
+    viewModelScope.launch(Dispatchers.IO) {
+      val users = repository.allUsers.first()
+      val targetUser = users.find { it.id == studentId }
+      if (targetUser != null) {
+        repository.updateUser(
+          targetUser.copy(
+            groupNumber = "$groupName • $cohortName",
+            scopeAcademicGroupId = academicGroupId,
+            scopeCohortGroupId = cohortId
+          )
+        )
+      }
+      val currentProf = studentProfile.value
+      if (currentProf != null && currentProf.id == studentId) {
+        repository.insertStudentProfile(
+          currentProf.copy(groupNumber = "$groupName • $cohortName")
+        )
+      }
+    }
   }
 
   fun addUser(

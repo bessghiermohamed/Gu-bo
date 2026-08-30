@@ -45,7 +45,9 @@ fun AdminPanelScreen(
   val institutions by viewModel.allInstitutions.collectAsStateWithLifecycle()
   val allAcademicYears by viewModel.allAcademicYears.collectAsStateWithLifecycle()
   val allAcademicTracks by viewModel.allAcademicTracks.collectAsStateWithLifecycle()
+  val allAcademicGroups by viewModel.allAcademicGroups.collectAsStateWithLifecycle()
   val allCohortGroups by viewModel.allCohortGroups.collectAsStateWithLifecycle()
+  val allJoinRequests by viewModel.allJoinRequests.collectAsStateWithLifecycle()
   val profile by viewModel.studentProfile.collectAsStateWithLifecycle()
   val users by viewModel.allUsers.collectAsStateWithLifecycle()
   val issueReports by viewModel.allIssueReports.collectAsStateWithLifecycle()
@@ -67,7 +69,7 @@ fun AdminPanelScreen(
   var showAddCohortDialog by remember { mutableStateOf(false) }
   var showAddModuleDialog by remember { mutableStateOf(false) }
 
-  // State for Assigning Student to Cohort
+  // State for Assigning Student to Cohort directly
   var studentForCohortAssignment by remember { mutableStateOf<AppUser?>(null) }
 
   // State for Role Assignment Dialog
@@ -77,11 +79,15 @@ fun AdminPanelScreen(
   // Show raw developer keys toggle
   var showDevKeys by remember { mutableStateOf(false) }
 
-  // Dialog: Assign Student to Cohort
+  // Dialog: Assign Student to Cohort Directly
   if (studentForCohortAssignment != null) {
     val target = studentForCohortAssignment!!
-    var selectedCohortName by remember {
-      mutableStateOf(allCohortGroups.firstOrNull()?.groupName ?: "الفوج 01")
+    var selectedGrpId by remember { mutableStateOf(allAcademicGroups.firstOrNull()?.id ?: 1L) }
+    val cohortsInGroup = remember(selectedGrpId, allCohortGroups) {
+      allCohortGroups.filter { it.academicGroupId == selectedGrpId }.ifEmpty { allCohortGroups }
+    }
+    var selectedCohortId by remember(cohortsInGroup) {
+      mutableStateOf(cohortsInGroup.firstOrNull()?.id ?: 1L)
     }
 
     AlertDialog(
@@ -90,28 +96,28 @@ fun AdminPanelScreen(
       text = {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
           Text(
-            text = "اختر الفوج لإلحاق الطالب: ${target.fullName}",
+            text = "اختر المجموعة والفوج لإلحاق الطالب: ${target.fullName}",
             style = MaterialTheme.typography.bodyMedium
           )
-          allCohortGroups.forEach { cohort ->
-            val isSelected = cohort.groupName == selectedCohortName
-            Card(
-              shape = RoundedCornerShape(10.dp),
-              colors = CardDefaults.cardColors(
-                containerColor = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-                else MaterialTheme.colorScheme.surface
-              ),
-              onClick = { selectedCohortName = cohort.groupName },
-              modifier = Modifier.fillMaxWidth()
-            ) {
-              Row(
-                modifier = Modifier.padding(10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-              ) {
-                RadioButton(selected = isSelected, onClick = { selectedCohortName = cohort.groupName })
-                Text(cohort.groupName, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal)
-              }
+          Text("1. اختر المجموعة:", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
+          Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            allAcademicGroups.forEach { grp ->
+              FilterChip(
+                selected = selectedGrpId == grp.id,
+                onClick = { selectedGrpId = grp.id },
+                label = { Text(grp.groupName, fontSize = 11.sp) }
+              )
+            }
+          }
+
+          Text("2. اختر الفوج الفرعي:", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
+          Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            cohortsInGroup.forEach { cohort ->
+              FilterChip(
+                selected = selectedCohortId == cohort.id,
+                onClick = { selectedCohortId = cohort.id },
+                label = { Text(cohort.groupName, fontSize = 11.sp) }
+              )
             }
           }
         }
@@ -119,8 +125,18 @@ fun AdminPanelScreen(
       confirmButton = {
         Button(
           onClick = {
-            viewModel.assignStudentToGroup(target.id, selectedCohortName)
-            statusMessage = "تم إلحاق الطالب ${target.fullName} بـ [${selectedCohortName}] بنجاح 🎓"
+            val grp = allAcademicGroups.find { it.id == selectedGrpId }
+            val coh = allCohortGroups.find { it.id == selectedCohortId }
+            val gName = grp?.groupName ?: "المجموعة 01"
+            val cName = coh?.groupName ?: "الفوج 01"
+            viewModel.directlyAssignStudentToGroup(
+              studentId = target.id,
+              groupName = gName,
+              cohortName = cName,
+              academicGroupId = selectedGrpId,
+              cohortId = selectedCohortId
+            )
+            statusMessage = "تم إلحاق الطالب ${target.fullName} بـ $gName • $cName بنجاح 🎓"
             studentForCohortAssignment = null
           },
           shape = RoundedCornerShape(10.dp)
@@ -129,9 +145,7 @@ fun AdminPanelScreen(
         }
       },
       dismissButton = {
-        TextButton(onClick = { studentForCohortAssignment = null }) {
-          Text("إلغاء")
-        }
+        TextButton(onClick = { studentForCohortAssignment = null }) { Text("إلغاء") }
       }
     )
   }
@@ -707,19 +721,31 @@ fun AdminPanelScreen(
       )
     }
 
-    // Dependent list of Cohort Groups for Level 5 (الأفواج)
-    val availableGroups = remember(selectedSpecId, selectedTrackId, selectedYearId, allCohortGroups) {
-      val filtered = allCohortGroups.filter {
+    // Dependent list of Academic Groups for Level 5 (المجموعات)
+    val availableAcademicGroups = remember(selectedSpecId, selectedTrackId, selectedYearId, allAcademicGroups) {
+      val filtered = allAcademicGroups.filter {
         it.specialtyId == selectedSpecId &&
           (selectedTrackId == null || it.trackId == null || it.trackId == selectedTrackId) &&
           it.academicYearId == selectedYearId
       }
-      if (filtered.isNotEmpty()) filtered else allCohortGroups.filter { it.specialtyId == selectedSpecId }
+      if (filtered.isNotEmpty()) filtered else allAcademicGroups.filter { it.specialtyId == selectedSpecId }
     }
-    var selectedGroupId by remember(availableGroups) {
+    var selectedAcademicGroupId by remember(availableAcademicGroups) {
       mutableStateOf(
-        targetUser.scopeCohortGroupId?.takeIf { id -> availableGroups.any { it.id == id } }
-          ?: availableGroups.firstOrNull()?.id ?: 1L
+        targetUser.scopeAcademicGroupId?.takeIf { id -> availableAcademicGroups.any { it.id == id } }
+          ?: availableAcademicGroups.firstOrNull()?.id ?: 1L
+      )
+    }
+
+    // Dependent list of Cohort Groups for Level 6 (الأفواج الفرعية)
+    val availableCohorts = remember(selectedAcademicGroupId, allCohortGroups) {
+      val filtered = allCohortGroups.filter { it.academicGroupId == selectedAcademicGroupId }
+      if (filtered.isNotEmpty()) filtered else allCohortGroups
+    }
+    var selectedCohortId by remember(availableCohorts) {
+      mutableStateOf(
+        targetUser.scopeCohortGroupId?.takeIf { id -> availableCohorts.any { it.id == id } }
+          ?: availableCohorts.firstOrNull()?.id ?: 1L
       )
     }
 
@@ -727,7 +753,8 @@ fun AdminPanelScreen(
     val currentSelectedSpec = specialties.find { it.id == selectedSpecId }
     val currentSelectedTrack = allAcademicTracks.find { it.id == selectedTrackId }
     val currentSelectedYear = allAcademicYears.find { it.id == selectedYearId }
-    val currentSelectedGroup = allCohortGroups.find { it.id == selectedGroupId }
+    val currentSelectedGroup = allAcademicGroups.find { it.id == selectedAcademicGroupId }
+    val currentSelectedCohort = allCohortGroups.find { it.id == selectedCohortId }
 
     AlertDialog(
       onDismissRequest = { targetUserForRole = null },
@@ -750,7 +777,7 @@ fun AdminPanelScreen(
               FilterChip(
                 selected = selectedNewRole == "REPRESENTATIVE",
                 onClick = { selectedNewRole = "REPRESENTATIVE" },
-                label = { Text("ممثل فوج") }
+                label = { Text("ممثل فوج / مجموعة") }
               )
               FilterChip(
                 selected = selectedNewRole == "STUDENT",
@@ -763,7 +790,7 @@ fun AdminPanelScreen(
           if (selectedNewRole != "STUDENT") {
             item {
               HorizontalDivider()
-              Text("تحديد مسار النطاق الخماسي الهرمي (معرفات رقمية):", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary))
+              Text("تحديد مسار النطاق السداسي الهرمي (معرفات رقمية):", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary))
             }
 
             // 1. المؤسسة (إلزامية)
@@ -824,19 +851,37 @@ fun AdminPanelScreen(
               }
             }
 
-            // 5. الفوج (خاص بممثل الفوج)
+            // 5. المجموعة (Level 5)
             if (selectedNewRole == "REPRESENTATIVE") {
               item {
-                Text("5. الفوج الدراسي المعني:", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
+                Text("5. المجموعة الأكاديمية (Group):", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                  if (availableGroups.isEmpty()) {
-                    Text("لا توجد أفواج في هذا الملمح، يرجى إنشاء فوج أولاً", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                  if (availableAcademicGroups.isEmpty()) {
+                    Text("لا توجد مجموعات مسجلة في هذا المسار", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
                   } else {
-                    availableGroups.forEach { grp ->
+                    availableAcademicGroups.forEach { grp ->
                       FilterChip(
-                        selected = selectedGroupId == grp.id,
-                        onClick = { selectedGroupId = grp.id },
+                        selected = selectedAcademicGroupId == grp.id,
+                        onClick = { selectedAcademicGroupId = grp.id },
                         label = { Text(grp.groupName, fontSize = 11.sp) }
+                      )
+                    }
+                  }
+                }
+              }
+
+              // 6. الفوج الفرعي (Level 6)
+              item {
+                Text("6. الفوج الفرعي (Cohort - اختياري لممثل المجموعة):", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                  if (availableCohorts.isEmpty()) {
+                    Text("لا توجد أفواج فرعية، يشمل المجموعة كاملة", style = MaterialTheme.typography.bodySmall)
+                  } else {
+                    availableCohorts.forEach { coh ->
+                      FilterChip(
+                        selected = selectedCohortId == coh.id,
+                        onClick = { selectedCohortId = coh.id },
+                        label = { Text(coh.groupName, fontSize = 11.sp) }
                       )
                     }
                   }
@@ -855,7 +900,8 @@ fun AdminPanelScreen(
                 specialtyId = selectedSpecId,
                 trackId = selectedTrackId,
                 yearId = null,
-                groupId = null,
+                academicGroupId = null,
+                cohortId = null,
                 scopeDescription = "${currentSelectedInst?.nameAr ?: ""} • ${currentSelectedSpec?.nameAr ?: "تخصص"}"
               )
               "REPRESENTATIVE" -> ScopeAssignment(
@@ -863,15 +909,17 @@ fun AdminPanelScreen(
                 specialtyId = selectedSpecId,
                 trackId = selectedTrackId,
                 yearId = selectedYearId,
-                groupId = selectedGroupId,
-                scopeDescription = "${currentSelectedSpec?.nameAr ?: ""} • ${currentSelectedTrack?.trackNameAr?.take(15) ?: ""} • ${currentSelectedGroup?.groupName ?: ""}"
+                academicGroupId = selectedAcademicGroupId,
+                cohortId = selectedCohortId,
+                scopeDescription = "${currentSelectedSpec?.nameAr ?: ""} • ${currentSelectedTrack?.trackNameAr?.take(10) ?: ""} • ${currentSelectedGroup?.groupName ?: ""} • ${currentSelectedCohort?.groupName ?: ""}"
               )
               else -> ScopeAssignment(
                 institutionId = selectedInstitutionId,
                 specialtyId = selectedSpecId,
                 trackId = selectedTrackId,
                 yearId = selectedYearId,
-                groupId = selectedGroupId,
+                academicGroupId = selectedAcademicGroupId,
+                cohortId = selectedCohortId,
                 scopeDescription = "طالب"
               )
             }
@@ -989,6 +1037,7 @@ fun AdminPanelScreen(
       contentPadding = PaddingValues(top = 10.dp, bottom = 24.dp)
     ) {
       item {
+        val pendingRequestsCount = allJoinRequests.count { it.status == "PENDING" }
         SecondaryScrollableTabRow(
           selectedTabIndex = selectedTab,
           modifier = Modifier.fillMaxWidth()
@@ -1011,6 +1060,11 @@ fun AdminPanelScreen(
           Tab(
             selected = selectedTab == 3,
             onClick = { selectedTab = 3 },
+            text = { Text("طلبات الانضمام ($pendingRequestsCount)", fontWeight = FontWeight.Bold) }
+          )
+          Tab(
+            selected = selectedTab == 4,
+            onClick = { selectedTab = 4 },
             text = { Text("التبليغات (${issueReports.size})", fontWeight = FontWeight.Bold) }
           )
         }
@@ -1422,8 +1476,104 @@ fun AdminPanelScreen(
         }
       }
 
-      // TAB 3: التبليغات الواردة من الطلاب
+      // TAB 3: طلبات الانضمام للأفواج
       if (selectedTab == 3) {
+        item {
+          Text("طلبات الانضمام للأفواج الواردة من الطلاب:", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black))
+        }
+
+        val pendingRequests = allJoinRequests.filter { it.status == "PENDING" }
+        if (pendingRequests.isEmpty()) {
+          item {
+            Card(
+              shape = RoundedCornerShape(16.dp),
+              colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+              modifier = Modifier.fillMaxWidth()
+            ) {
+              Text(
+                text = "لا توجد أي طلبات انضمام معلقة حالياً.",
+                modifier = Modifier.padding(16.dp),
+                style = MaterialTheme.typography.bodyMedium
+              )
+            }
+          }
+        } else {
+          items(pendingRequests) { req ->
+            Card(
+              shape = RoundedCornerShape(16.dp),
+              colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+              elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+              modifier = Modifier.fillMaxWidth()
+            ) {
+              Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                  modifier = Modifier.fillMaxWidth(),
+                  horizontalArrangement = Arrangement.SpaceBetween,
+                  verticalAlignment = Alignment.CenterVertically
+                ) {
+                  Column {
+                    Text(req.studentFullName, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
+                    Text("رقم التسجيل: ${req.studentCardNumber}", style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant))
+                  }
+                  Box(
+                    modifier = Modifier
+                      .clip(RoundedCornerShape(6.dp))
+                      .background(MaterialTheme.colorScheme.primaryContainer)
+                      .padding(horizontal = 8.dp, vertical = 3.dp)
+                  ) {
+                    Text("طلب معلّق", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary))
+                  }
+                }
+
+                Surface(
+                  shape = RoundedCornerShape(8.dp),
+                  color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                  modifier = Modifier.fillMaxWidth()
+                ) {
+                  Text(
+                    text = "الفوج المطلوب: ${req.groupName} • ${req.cohortName}",
+                    modifier = Modifier.padding(8.dp),
+                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold)
+                  )
+                }
+
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                  Button(
+                    onClick = {
+                      viewModel.approveGroupJoinRequest(req)
+                      statusMessage = "تم قبول طلب الطالب [${req.studentFullName}] وإلحاقه بالفوج 🎓"
+                    },
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)),
+                    modifier = Modifier.weight(1f)
+                  ) {
+                    Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("قبول الطلب")
+                  }
+
+                  OutlinedButton(
+                    onClick = {
+                      viewModel.rejectGroupJoinRequest(req, "تم رفض الطلب من قِبل المشرف")
+                      statusMessage = "تم رفض طلب الطالب [${req.studentFullName}]."
+                    },
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                    modifier = Modifier.weight(1f)
+                  ) {
+                    Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("رفض الطلب")
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // TAB 4: التبليغات الواردة من الطلاب
+      if (selectedTab == 4) {
         item {
           Text("التبليغات والشكاوى الواردة من الطلبة:", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black))
         }

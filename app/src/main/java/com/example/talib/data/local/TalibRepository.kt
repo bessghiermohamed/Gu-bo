@@ -27,14 +27,29 @@ class TalibRepository(private val dao: TalibDao) {
   suspend fun insertAcademicTracks(tracks: List<AcademicTrack>) = dao.insertAcademicTracks(tracks)
   suspend fun insertAcademicTrack(track: AcademicTrack) = dao.insertAcademicTrack(track)
 
-  // Cohort Groups
+  // Academic Groups (المجموعات الأكاديمية - المستوى الخامس)
+  val allAcademicGroups: Flow<List<AcademicGroup>> = dao.getAllAcademicGroups()
+  fun getGroupsForSpecialtyTrackAndYear(specialtyId: Long, trackId: Long?, yearId: Long): Flow<List<AcademicGroup>> =
+    dao.getGroupsForSpecialtyTrackAndYear(specialtyId, trackId, yearId)
+  suspend fun insertAcademicGroups(groups: List<AcademicGroup>) = dao.insertAcademicGroups(groups)
+  suspend fun insertAcademicGroup(group: AcademicGroup) = dao.insertAcademicGroup(group)
+
+  // Cohort Groups (الأفواج الفرعية - المستوى السادس)
   val allCohortGroups: Flow<List<CohortGroup>> = dao.getAllCohortGroups()
   fun getGroupsForSpecialtyAndYear(specialtyId: Long, yearId: Long): Flow<List<CohortGroup>> =
     dao.getGroupsForSpecialtyAndYear(specialtyId, yearId)
-  fun getGroupsForSpecialtyTrackAndYear(specialtyId: Long, trackId: Long?, yearId: Long): Flow<List<CohortGroup>> =
-    dao.getGroupsForSpecialtyTrackAndYear(specialtyId, trackId, yearId)
+  fun getCohortsForHierarchy(specialtyId: Long, trackId: Long?, yearId: Long, groupId: Long?): Flow<List<CohortGroup>> =
+    dao.getCohortsForHierarchy(specialtyId, trackId, yearId, groupId)
   suspend fun insertCohortGroups(groups: List<CohortGroup>) = dao.insertCohortGroups(groups)
   suspend fun insertCohortGroup(group: CohortGroup) = dao.insertCohortGroup(group)
+
+  // Group Join Requests (طلبات الانضمام للأفواج)
+  val allJoinRequests: Flow<List<GroupJoinRequest>> = dao.getAllJoinRequests()
+  fun getJoinRequestsForStudent(studentId: Long): Flow<List<GroupJoinRequest>> = dao.getJoinRequestsForStudent(studentId)
+  fun getJoinRequestsByStatus(status: String): Flow<List<GroupJoinRequest>> = dao.getJoinRequestsByStatus(status)
+  suspend fun insertJoinRequest(request: GroupJoinRequest) = dao.insertJoinRequest(request)
+  suspend fun updateJoinRequest(request: GroupJoinRequest) = dao.updateJoinRequest(request)
+  suspend fun deleteJoinRequest(request: GroupJoinRequest) = dao.deleteJoinRequest(request)
 
   // Modules
   val allModules: Flow<List<ModuleCourse>> = dao.getAllModules()

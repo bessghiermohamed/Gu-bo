@@ -62,21 +62,53 @@ interface TalibDao {
   @Insert(onConflict = OnConflictStrategy.REPLACE)
   suspend fun insertAcademicTrack(track: AcademicTrack): Long
 
-  // Cohort Groups
+  // Academic Groups (المجموعات الأكاديمية - المستوى الخامس)
+  @Query("SELECT * FROM academic_groups ORDER BY id ASC")
+  fun getAllAcademicGroups(): Flow<List<AcademicGroup>>
+
+  @Query("SELECT * FROM academic_groups WHERE specialtyId = :specialtyId AND academicYearId = :yearId AND (:trackId IS NULL OR trackId = :trackId) ORDER BY id ASC")
+  fun getGroupsForSpecialtyTrackAndYear(specialtyId: Long, trackId: Long?, yearId: Long): Flow<List<AcademicGroup>>
+
+  @Insert(onConflict = OnConflictStrategy.REPLACE)
+  suspend fun insertAcademicGroups(groups: List<AcademicGroup>)
+
+  @Insert(onConflict = OnConflictStrategy.REPLACE)
+  suspend fun insertAcademicGroup(group: AcademicGroup): Long
+
+  // Cohort Groups (الأفواج الفرعية - المستوى السادس)
   @Query("SELECT * FROM cohort_groups ORDER BY id ASC")
   fun getAllCohortGroups(): Flow<List<CohortGroup>>
 
   @Query("SELECT * FROM cohort_groups WHERE specialtyId = :specialtyId AND academicYearId = :yearId ORDER BY id ASC")
   fun getGroupsForSpecialtyAndYear(specialtyId: Long, yearId: Long): Flow<List<CohortGroup>>
 
-  @Query("SELECT * FROM cohort_groups WHERE specialtyId = :specialtyId AND academicYearId = :yearId AND (:trackId IS NULL OR trackId = :trackId) ORDER BY id ASC")
-  fun getGroupsForSpecialtyTrackAndYear(specialtyId: Long, trackId: Long?, yearId: Long): Flow<List<CohortGroup>>
+  @Query("SELECT * FROM cohort_groups WHERE specialtyId = :specialtyId AND academicYearId = :yearId AND (:trackId IS NULL OR trackId = :trackId) AND (:groupId IS NULL OR academicGroupId = :groupId) ORDER BY id ASC")
+  fun getCohortsForHierarchy(specialtyId: Long, trackId: Long?, yearId: Long, groupId: Long?): Flow<List<CohortGroup>>
 
   @Insert(onConflict = OnConflictStrategy.REPLACE)
   suspend fun insertCohortGroups(groups: List<CohortGroup>)
 
   @Insert(onConflict = OnConflictStrategy.REPLACE)
   suspend fun insertCohortGroup(group: CohortGroup): Long
+
+  // Group Join Requests (طلبات الانضمام للأفواج)
+  @Query("SELECT * FROM group_join_requests ORDER BY id DESC")
+  fun getAllJoinRequests(): Flow<List<GroupJoinRequest>>
+
+  @Query("SELECT * FROM group_join_requests WHERE studentId = :studentId ORDER BY id DESC")
+  fun getJoinRequestsForStudent(studentId: Long): Flow<List<GroupJoinRequest>>
+
+  @Query("SELECT * FROM group_join_requests WHERE status = :status ORDER BY id DESC")
+  fun getJoinRequestsByStatus(status: String): Flow<List<GroupJoinRequest>>
+
+  @Insert(onConflict = OnConflictStrategy.REPLACE)
+  suspend fun insertJoinRequest(request: GroupJoinRequest): Long
+
+  @Update
+  suspend fun updateJoinRequest(request: GroupJoinRequest)
+
+  @Delete
+  suspend fun deleteJoinRequest(request: GroupJoinRequest)
 
   // Modules
   @Query("SELECT * FROM modules ORDER BY id ASC")
