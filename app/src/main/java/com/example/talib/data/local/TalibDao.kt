@@ -49,12 +49,28 @@ interface TalibDao {
   @Insert(onConflict = OnConflictStrategy.REPLACE)
   suspend fun insertAcademicYear(year: AcademicYear): Long
 
+  // Academic Tracks (الملامح الأكاديمية)
+  @Query("SELECT * FROM academic_tracks ORDER BY id ASC")
+  fun getAllAcademicTracks(): Flow<List<AcademicTrack>>
+
+  @Query("SELECT * FROM academic_tracks WHERE specialtyId = :specialtyId ORDER BY id ASC")
+  fun getTracksForSpecialty(specialtyId: Long): Flow<List<AcademicTrack>>
+
+  @Insert(onConflict = OnConflictStrategy.REPLACE)
+  suspend fun insertAcademicTracks(tracks: List<AcademicTrack>)
+
+  @Insert(onConflict = OnConflictStrategy.REPLACE)
+  suspend fun insertAcademicTrack(track: AcademicTrack): Long
+
   // Cohort Groups
   @Query("SELECT * FROM cohort_groups ORDER BY id ASC")
   fun getAllCohortGroups(): Flow<List<CohortGroup>>
 
   @Query("SELECT * FROM cohort_groups WHERE specialtyId = :specialtyId AND academicYearId = :yearId ORDER BY id ASC")
   fun getGroupsForSpecialtyAndYear(specialtyId: Long, yearId: Long): Flow<List<CohortGroup>>
+
+  @Query("SELECT * FROM cohort_groups WHERE specialtyId = :specialtyId AND academicYearId = :yearId AND (:trackId IS NULL OR trackId = :trackId) ORDER BY id ASC")
+  fun getGroupsForSpecialtyTrackAndYear(specialtyId: Long, trackId: Long?, yearId: Long): Flow<List<CohortGroup>>
 
   @Insert(onConflict = OnConflictStrategy.REPLACE)
   suspend fun insertCohortGroups(groups: List<CohortGroup>)

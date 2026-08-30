@@ -21,10 +21,18 @@ class TalibRepository(private val dao: TalibDao) {
   suspend fun insertAcademicYear(year: AcademicYear) = dao.insertAcademicYear(year)
   suspend fun insertAcademicYears(years: List<AcademicYear>) = dao.insertAcademicYears(years)
 
+  // Academic Tracks
+  val allAcademicTracks: Flow<List<AcademicTrack>> = dao.getAllAcademicTracks()
+  fun getTracksForSpecialty(specialtyId: Long): Flow<List<AcademicTrack>> = dao.getTracksForSpecialty(specialtyId)
+  suspend fun insertAcademicTracks(tracks: List<AcademicTrack>) = dao.insertAcademicTracks(tracks)
+  suspend fun insertAcademicTrack(track: AcademicTrack) = dao.insertAcademicTrack(track)
+
   // Cohort Groups
   val allCohortGroups: Flow<List<CohortGroup>> = dao.getAllCohortGroups()
   fun getGroupsForSpecialtyAndYear(specialtyId: Long, yearId: Long): Flow<List<CohortGroup>> =
     dao.getGroupsForSpecialtyAndYear(specialtyId, yearId)
+  fun getGroupsForSpecialtyTrackAndYear(specialtyId: Long, trackId: Long?, yearId: Long): Flow<List<CohortGroup>> =
+    dao.getGroupsForSpecialtyTrackAndYear(specialtyId, trackId, yearId)
   suspend fun insertCohortGroups(groups: List<CohortGroup>) = dao.insertCohortGroups(groups)
   suspend fun insertCohortGroup(group: CohortGroup) = dao.insertCohortGroup(group)
 

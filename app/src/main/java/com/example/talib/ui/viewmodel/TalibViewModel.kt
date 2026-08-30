@@ -184,6 +184,10 @@ class TalibViewModel(application: Application) : AndroidViewModel(application) {
   val allAcademicYears: StateFlow<List<AcademicYear>> = repository.allAcademicYears
     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+  // All Academic Tracks (التعليم الابتدائي / المتوسط / الثانوي / عام)
+  val allAcademicTracks: StateFlow<List<AcademicTrack>> = repository.allAcademicTracks
+    .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
   // All Cohort Groups
   val allCohortGroups: StateFlow<List<CohortGroup>> = repository.allCohortGroups
     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -667,6 +671,7 @@ class TalibViewModel(application: Application) : AndroidViewModel(application) {
           role = newRole,
           scopeInstitutionId = scopeAssignment?.institutionId,
           scopeSpecialtyId = scopeAssignment?.specialtyId,
+          scopeTrackId = scopeAssignment?.trackId,
           scopeAcademicYearId = scopeAssignment?.yearId,
           scopeCohortGroupId = scopeAssignment?.groupId,
           representativeScope = scopeAssignment?.scopeDescription ?: when (newRole) {
@@ -682,7 +687,7 @@ class TalibViewModel(application: Application) : AndroidViewModel(application) {
   }
 
   fun updateUserRole(userId: Long, newRole: String, newScope: String) {
-    updateUserRole(userId, newRole, ScopeAssignment(scopeDescription = newScope))
+    updateUserRole(userId, newRole, ScopeAssignment(institutionId = 1L, scopeDescription = newScope))
   }
 
   fun addUser(

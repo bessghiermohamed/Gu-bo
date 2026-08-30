@@ -661,40 +661,7 @@ fun ProfileScreen(
       }
     }
 
-    // 5. Role Switcher for Testing & Demonstration
-    item {
-      Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
-        modifier = Modifier.fillMaxWidth()
-      ) {
-        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-          Text(
-            text = "الرتبة والصلاحيات الحالية:",
-            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
-          )
-          Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-          ) {
-            FilterChip(
-              selected = profile?.userRole == "STUDENT",
-              onClick = { viewModel.switchUserRole("STUDENT") },
-              label = { Text("طالب عادي") },
-              modifier = Modifier.weight(1f)
-            )
-            FilterChip(
-              selected = profile?.userRole == "REPRESENTATIVE" || profile?.userRole == "مستشار / ممثل القسم",
-              onClick = { viewModel.switchUserRole("REPRESENTATIVE") },
-              label = { Text("ممثل الفوج / مشرف") },
-              modifier = Modifier.weight(1f)
-            )
-          }
-        }
-      }
-    }
-
-    // 6. Logout Action Card
+    // 5. Logout Action Card
     item {
       Card(
         shape = RoundedCornerShape(16.dp),

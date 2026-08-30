@@ -1,6 +1,10 @@
 package com.example.talib.ui.screens
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -15,11 +19,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
 import com.example.talib.data.local.ScheduleItem
 import com.example.talib.ui.viewmodel.TalibViewModel
 
@@ -35,6 +44,27 @@ fun ScheduleScreen(
   var reportDialogItem by remember { mutableStateOf<ScheduleItem?>(null) }
   var reportReasonText by remember { mutableStateOf("") }
   var reportSuccessMessage by remember { mutableStateOf<String?>(null) }
+
+  // Official Schedule Image state
+  var scheduleImageUri by remember { mutableStateOf<Uri?>(null) }
+  var imageScale by remember { mutableFloatStateOf(1f) }
+  var imageOffsetX by remember { mutableFloatStateOf(0f) }
+  var imageOffsetY by remember { mutableFloatStateOf(0f) }
+
+  val imagePickerLauncher = rememberLauncherForActivityResult(
+    contract = ActivityResultContracts.GetContent()
+  ) { uri: Uri? ->
+    if (uri != null) {
+      scheduleImageUri = uri
+      imageScale = 1f
+      imageOffsetX = 0f
+      imageOffsetY = 0f
+    }
+  }
+
+  // User role permissions for uploading
+  val userRole = profile?.userRole ?: "STUDENT"
+  val canUploadSchedule = userRole in listOf("OWNER", "SPECIALTY_ADMIN", "REPRESENTATIVE")
 
   // Report Issue Dialog
   if (reportDialogItem != null) {
@@ -182,30 +212,149 @@ fun ScheduleScreen(
           modifier = Modifier.fillMaxWidth()
         ) {
           Column(
-            modifier = Modifier.padding(20.dp),
+            modifier = Modifier.padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp)
           ) {
-            Icon(
-              Icons.Default.PhotoLibrary,
-              contentDescription = null,
-              tint = MaterialTheme.colorScheme.primary,
-              modifier = Modifier.size(54.dp)
-            )
-            Text(
-              text = "جدول التوقيت الرسمي الصادر عن الكلية",
-              style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
-            )
-            Surface(
-              shape = RoundedCornerShape(12.dp),
-              color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-              modifier = Modifier.fillMaxWidth().height(180.dp)
+            Row(
+              modifier = Modifier.fillMaxWidth(),
+              horizontalArrangement = Arrangement.SpaceBetween,
+              verticalAlignment = Alignment.CenterVertically
             ) {
-              Box(contentAlignment = Alignment.Center) {
-                Text(
-                  text = "📄 المخطط الزمني الشامل معتمد ومتاح للتحميل",
-                  style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
+              Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+              ) {
+                Icon(
+                  Icons.Default.PhotoLibrary,
+                  contentDescription = null,
+                  tint = MaterialTheme.colorScheme.primary,
+                  modifier = Modifier.size(24.dp)
                 )
+                Text(
+                  text = "جدول التوقيت الرسمي",
+                  style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
+                )
+              }
+
+              if (canUploadSchedule) {
+                Button(
+                  onClick = { imagePickerLauncher.launch("image/*") },
+                  shape = RoundedCornerShape(10.dp),
+                  contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                ) {
+                  Icon(Icons.Default.Upload, contentDescription = null, modifier = Modifier.size(16.dp))
+                  Spacer(Modifier.width(4.dp))
+                  Text(if (scheduleImageUri != null) "تغيير الصورة" else "رفع صورة الجدول", fontSize = 12.sp)
+                }
+              }
+            }
+
+            if (scheduleImageUri != null) {
+              Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = Color.Black.copy(alpha = 0.05f),
+                modifier = Modifier
+                  .fillMaxWidth()
+                  .height(360.dp)
+                  .clip(RoundedCornerShape(12.dp))
+              ) {
+                Box(
+                  modifier = Modifier
+                    .fillMaxSize()
+                    .pointerInput(Unit) {
+                      detectTransformGestures { _, pan, zoom, _ ->
+                        imageScale = (imageScale * zoom).coerceIn(1f, 5f)
+                        if (imageScale > 1f) {
+                          val maxOffsetX = (size.width * (imageScale - 1f)) / 2f
+                          val maxOffsetY = (size.height * (imageScale - 1f)) / 2f
+                          imageOffsetX = (imageOffsetX + pan.x * imageScale).coerceIn(-maxOffsetX, maxOffsetX)
+                          imageOffsetY = (imageOffsetY + pan.y * imageScale).coerceIn(-maxOffsetY, maxOffsetY)
+                        } else {
+                          imageOffsetX = 0f
+                          imageOffsetY = 0f
+                        }
+                      }
+                    }
+                ) {
+                  AsyncImage(
+                    model = scheduleImageUri,
+                    contentDescription = "صورة الجدول الرسمي",
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier
+                      .fillMaxSize()
+                      .graphicsLayer(
+                        scaleX = imageScale,
+                        scaleY = imageScale,
+                        translationX = imageOffsetX,
+                        translationY = imageOffsetY
+                      )
+                  )
+
+                  // Zoom control overlay
+                  Row(
+                    modifier = Modifier
+                      .align(Alignment.BottomEnd)
+                      .padding(8.dp)
+                      .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.85f), RoundedCornerShape(8.dp))
+                      .padding(horizontal = 8.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                  ) {
+                    Text(
+                      text = "${(imageScale * 100).toInt()}%",
+                      style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
+                    )
+                    IconButton(
+                      onClick = {
+                        imageScale = 1f
+                        imageOffsetX = 0f
+                        imageOffsetY = 0f
+                      },
+                      modifier = Modifier.size(24.dp)
+                    ) {
+                      Icon(Icons.Default.Refresh, contentDescription = "إعادة ضبط", modifier = Modifier.size(14.dp))
+                    }
+                  }
+                }
+              }
+
+              Text(
+                text = "💡 يمكنك السحب والتكبير والتصغير بإصبعين للتنقل داخل تفاصيل الجدول",
+                style = MaterialTheme.typography.labelSmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
+              )
+            } else {
+              Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                modifier = Modifier
+                  .fillMaxWidth()
+                  .height(200.dp)
+              ) {
+                Column(
+                  modifier = Modifier.fillMaxSize(),
+                  horizontalAlignment = Alignment.CenterHorizontally,
+                  verticalArrangement = Arrangement.Center
+                ) {
+                  Icon(
+                    Icons.Default.AddPhotoAlternate,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
+                    modifier = Modifier.size(48.dp)
+                  )
+                  Spacer(Modifier.height(8.dp))
+                  Text(
+                    text = "لم يتم رفع صورة الجدول بعد",
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold)
+                  )
+                  if (canUploadSchedule) {
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                      text = "اضغط على زر (رفع صورة الجدول) أعلاه لإدراج النسخة المعتمدة",
+                      style = MaterialTheme.typography.labelSmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    )
+                  }
+                }
               }
             }
           }

@@ -44,6 +44,7 @@ fun AdminPanelScreen(
   val specialties by viewModel.specialties.collectAsStateWithLifecycle()
   val institutions by viewModel.allInstitutions.collectAsStateWithLifecycle()
   val allAcademicYears by viewModel.allAcademicYears.collectAsStateWithLifecycle()
+  val allAcademicTracks by viewModel.allAcademicTracks.collectAsStateWithLifecycle()
   val allCohortGroups by viewModel.allCohortGroups.collectAsStateWithLifecycle()
   val profile by viewModel.studentProfile.collectAsStateWithLifecycle()
   val users by viewModel.allUsers.collectAsStateWithLifecycle()
@@ -660,38 +661,71 @@ fun AdminPanelScreen(
     )
   }
 
-  // Hierarchy Role & Scope Assignment Dialog
+  // Hierarchy Role & Scope Assignment Dialog (النظام الخماسي الإلزامي)
   if (targetUserForRole != null) {
     val targetUser = targetUserForRole!!
-    var selectedNewRole by remember { mutableStateOf("REPRESENTATIVE") }
+    var selectedNewRole by remember { mutableStateOf(if (targetUser.role in listOf("SPECIALTY_ADMIN", "REPRESENTATIVE", "STUDENT")) targetUser.role else "REPRESENTATIVE") }
     
+    // Level 1: المؤسسة (إلزامية دائماً)
     var selectedInstitutionId by remember {
       mutableStateOf(targetUser.scopeInstitutionId ?: institutions.firstOrNull()?.id ?: 1L)
     }
-    var selectedSpecId by remember {
-      mutableStateOf(targetUser.scopeSpecialtyId ?: specialties.firstOrNull()?.id ?: 1L)
-    }
-    var selectedYearId by remember {
-      mutableStateOf(targetUser.scopeAcademicYearId ?: allAcademicYears.firstOrNull()?.id ?: 1L)
-    }
-    var selectedGroupId by remember {
-      mutableStateOf(targetUser.scopeCohortGroupId ?: allCohortGroups.firstOrNull()?.id ?: 1L)
-    }
 
+    // Dependent list of Specialties for Level 2
     val availableSpecialties = remember(selectedInstitutionId, specialties) {
       val filtered = specialties.filter { it.institutionId == selectedInstitutionId }
       if (filtered.isNotEmpty()) filtered else specialties
     }
+    var selectedSpecId by remember(availableSpecialties) {
+      mutableStateOf(
+        targetUser.scopeSpecialtyId?.takeIf { id -> availableSpecialties.any { it.id == id } }
+          ?: availableSpecialties.firstOrNull()?.id ?: 1L
+      )
+    }
+
+    // Dependent list of Tracks for Level 3 (الملامح)
+    val availableTracks = remember(selectedSpecId, allAcademicTracks) {
+      val filtered = allAcademicTracks.filter { it.specialtyId == selectedSpecId }
+      if (filtered.isNotEmpty()) filtered else allAcademicTracks
+    }
+    var selectedTrackId by remember(availableTracks) {
+      mutableStateOf<Long?>(
+        targetUser.scopeTrackId?.takeIf { id -> availableTracks.any { it.id == id } }
+          ?: availableTracks.firstOrNull()?.id
+      )
+    }
+
+    // Dependent list of Years for Level 4 (السنوات)
     val availableYears = remember(selectedSpecId, allAcademicYears) {
       val filtered = allAcademicYears.filter { it.specialtyId == selectedSpecId }
       if (filtered.isNotEmpty()) filtered else allAcademicYears
     }
-    val availableGroups = remember(selectedSpecId, selectedYearId, allCohortGroups) {
-      val filtered = allCohortGroups.filter { it.specialtyId == selectedSpecId && it.academicYearId == selectedYearId }
-      if (filtered.isNotEmpty()) filtered else allCohortGroups
+    var selectedYearId by remember(availableYears) {
+      mutableStateOf(
+        targetUser.scopeAcademicYearId?.takeIf { id -> availableYears.any { it.id == id } }
+          ?: availableYears.firstOrNull()?.id ?: 1L
+      )
     }
 
+    // Dependent list of Cohort Groups for Level 5 (الأفواج)
+    val availableGroups = remember(selectedSpecId, selectedTrackId, selectedYearId, allCohortGroups) {
+      val filtered = allCohortGroups.filter {
+        it.specialtyId == selectedSpecId &&
+          (selectedTrackId == null || it.trackId == null || it.trackId == selectedTrackId) &&
+          it.academicYearId == selectedYearId
+      }
+      if (filtered.isNotEmpty()) filtered else allCohortGroups.filter { it.specialtyId == selectedSpecId }
+    }
+    var selectedGroupId by remember(availableGroups) {
+      mutableStateOf(
+        targetUser.scopeCohortGroupId?.takeIf { id -> availableGroups.any { it.id == id } }
+          ?: availableGroups.firstOrNull()?.id ?: 1L
+      )
+    }
+
+    val currentSelectedInst = institutions.find { it.id == selectedInstitutionId }
     val currentSelectedSpec = specialties.find { it.id == selectedSpecId }
+    val currentSelectedTrack = allAcademicTracks.find { it.id == selectedTrackId }
     val currentSelectedYear = allAcademicYears.find { it.id == selectedYearId }
     val currentSelectedGroup = allCohortGroups.find { it.id == selectedGroupId }
 
@@ -699,7 +733,10 @@ fun AdminPanelScreen(
       onDismissRequest = { targetUserForRole = null },
       title = { Text("تعيين رتبة ونطاق إشراف لـ: ${targetUser.fullName}", fontWeight = FontWeight.Bold, fontSize = 16.sp) },
       text = {
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        LazyColumn(
+          modifier = Modifier.fillMaxWidth(),
+          verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
           item {
             Text("اختر الرتبة الصادرة:", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -726,12 +763,27 @@ fun AdminPanelScreen(
           if (selectedNewRole != "STUDENT") {
             item {
               HorizontalDivider()
-              Text("تحديد نطاق الإشراف:", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold))
+              Text("تحديد مسار النطاق الخماسي الهرمي (معرفات رقمية):", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary))
             }
 
+            // 1. المؤسسة (إلزامية)
             item {
-              Text("التخصص الأكاديمي:", style = MaterialTheme.typography.labelSmall)
-              Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+              Text("1. المؤسسة الجامعية (إلزامي):", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
+              Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                institutions.forEach { inst ->
+                  FilterChip(
+                    selected = selectedInstitutionId == inst.id,
+                    onClick = { selectedInstitutionId = inst.id },
+                    label = { Text(inst.nameAr, fontSize = 11.sp) }
+                  )
+                }
+              }
+            }
+
+            // 2. التخصص
+            item {
+              Text("2. التخصص الأكاديمي:", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
+              Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 availableSpecialties.forEach { sp ->
                   FilterChip(
                     selected = selectedSpecId == sp.id,
@@ -742,16 +794,51 @@ fun AdminPanelScreen(
               }
             }
 
+            // 3. الملمح (Track)
+            if (availableTracks.isNotEmpty()) {
+              item {
+                Text("3. الملمح الأكاديمي (Track):", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                  availableTracks.forEach { tr ->
+                    FilterChip(
+                      selected = selectedTrackId == tr.id,
+                      onClick = { selectedTrackId = tr.id },
+                      label = { Text(tr.trackNameAr, fontSize = 11.sp) }
+                    )
+                  }
+                }
+              }
+            }
+
+            // 4. السنة الدراسية
+            item {
+              Text("4. السنة الدراسية:", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
+              Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                availableYears.forEach { yr ->
+                  FilterChip(
+                    selected = selectedYearId == yr.id,
+                    onClick = { selectedYearId = yr.id },
+                    label = { Text(yr.yearName, fontSize = 11.sp) }
+                  )
+                }
+              }
+            }
+
+            // 5. الفوج (خاص بممثل الفوج)
             if (selectedNewRole == "REPRESENTATIVE") {
               item {
-                Text("السنة والفوج:", style = MaterialTheme.typography.labelSmall)
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                  availableGroups.forEach { grp ->
-                    FilterChip(
-                      selected = selectedGroupId == grp.id,
-                      onClick = { selectedGroupId = grp.id },
-                      label = { Text(grp.groupName, fontSize = 11.sp) }
-                    )
+                Text("5. الفوج الدراسي المعني:", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                  if (availableGroups.isEmpty()) {
+                    Text("لا توجد أفواج في هذا الملمح، يرجى إنشاء فوج أولاً", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                  } else {
+                    availableGroups.forEach { grp ->
+                      FilterChip(
+                        selected = selectedGroupId == grp.id,
+                        onClick = { selectedGroupId = grp.id },
+                        label = { Text(grp.groupName, fontSize = 11.sp) }
+                      )
+                    }
                   }
                 }
               }
@@ -766,20 +853,23 @@ fun AdminPanelScreen(
               "SPECIALTY_ADMIN" -> ScopeAssignment(
                 institutionId = selectedInstitutionId,
                 specialtyId = selectedSpecId,
+                trackId = selectedTrackId,
                 yearId = null,
                 groupId = null,
-                scopeDescription = currentSelectedSpec?.nameAr ?: "تخصص"
+                scopeDescription = "${currentSelectedInst?.nameAr ?: ""} • ${currentSelectedSpec?.nameAr ?: "تخصص"}"
               )
               "REPRESENTATIVE" -> ScopeAssignment(
                 institutionId = selectedInstitutionId,
                 specialtyId = selectedSpecId,
+                trackId = selectedTrackId,
                 yearId = selectedYearId,
                 groupId = selectedGroupId,
-                scopeDescription = "${currentSelectedSpec?.nameAr ?: ""} • ${currentSelectedGroup?.groupName ?: ""}"
+                scopeDescription = "${currentSelectedSpec?.nameAr ?: ""} • ${currentSelectedTrack?.trackNameAr?.take(15) ?: ""} • ${currentSelectedGroup?.groupName ?: ""}"
               )
               else -> ScopeAssignment(
                 institutionId = selectedInstitutionId,
                 specialtyId = selectedSpecId,
+                trackId = selectedTrackId,
                 yearId = selectedYearId,
                 groupId = selectedGroupId,
                 scopeDescription = "طالب"

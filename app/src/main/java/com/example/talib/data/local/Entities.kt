@@ -32,20 +32,32 @@ data class AcademicYear(
   val semester: Int = 1
 )
 
+// 0.05 الملامح الأكاديمية (Academic Tracks - الابتدائي / المتوسط / الثانوي / عام)
+@Entity(tableName = "academic_tracks")
+data class AcademicTrack(
+  @PrimaryKey(autoGenerate = true) val id: Long = 0,
+  val specialtyId: Long,
+  val trackNameAr: String, // "أستاذ التعليم الابتدائي (PEP)", "أستاذ التعليم المتوسط (PEM)", "أستاذ التعليم الثانوي (PES)", "دراسات أكاديمية عامة"
+  val code: String = "TRACK"
+)
+
 // 0.1 الأفواج الدراسية (Cohort Groups)
 @Entity(tableName = "cohort_groups")
 data class CohortGroup(
   @PrimaryKey(autoGenerate = true) val id: Long = 0,
   val specialtyId: Long,
   val academicYearId: Long,
+  val trackId: Long? = 1,
   val groupName: String, // "الفوج 01", "الفوج 02", "الفوج 03"
   val subGroup: String = ""
 )
 
-// هيكل تعيين النطاق بالمعرفات الرقمية الفعلية
+// هيكل تعيين النطاق الخماسي بالمعرفات الرقمية الفعلية
+// النطاق = (المؤسسة) + (التخصص) + (الملمح) + (السنة) + (الفوج)
 data class ScopeAssignment(
-  val institutionId: Long? = null,
+  val institutionId: Long,   // إلزامي دائمًا
   val specialtyId: Long? = null,
+  val trackId: Long? = null,
   val yearId: Long? = null,
   val groupId: Long? = null,
   val scopeDescription: String = ""
@@ -298,8 +310,9 @@ data class AppUser(
   val role: String = "STUDENT", // STUDENT / REPRESENTATIVE / SPECIALTY_ADMIN / OWNER
   val representativeScope: String = "فوج واحد", // فوج واحد / سنة كاملة / تخصص كامل
   val assignedSpecialtyId: Long = 1,
-  val scopeInstitutionId: Long? = null,
+  val scopeInstitutionId: Long? = 1,
   val scopeSpecialtyId: Long? = null,
+  val scopeTrackId: Long? = null,
   val scopeAcademicYearId: Long? = null,
   val scopeCohortGroupId: Long? = null
 )
