@@ -10,8 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -25,12 +24,153 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.talib.data.local.Assignment
 import com.example.talib.ui.viewmodel.TalibViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AssignmentsScreen(
   viewModel: TalibViewModel
 ) {
   val assignments by viewModel.allAssignments.collectAsStateWithLifecycle()
   val modules by viewModel.allModules.collectAsStateWithLifecycle()
+  val profile by viewModel.studentProfile.collectAsStateWithLifecycle()
+
+  val currentRole = profile?.userRole ?: "STUDENT"
+  val isSupervisor = currentRole in listOf("OWNER", "SPECIALTY_ADMIN", "REPRESENTATIVE")
+
+  var showAddAssignmentDialog by remember { mutableStateOf(false) }
+  var reportDialogItem by remember { mutableStateOf<Assignment?>(null) }
+  var reportReasonText by remember { mutableStateOf("") }
+  var reportSuccessMessage by remember { mutableStateOf<String?>(null) }
+
+  // Dialog: Add New Assignment (For Admins/Representatives)
+  if (showAddAssignmentDialog) {
+    var title by remember { mutableStateOf("") }
+    var desc by remember { mutableStateOf("") }
+    var dueDate by remember { mutableStateOf("الخميس القادم") }
+    var selectedModName by remember { mutableStateOf(modules.firstOrNull()?.name ?: "مقياس دراسي") }
+    var modExpanded by remember { mutableStateOf(false) }
+
+    AlertDialog(
+      onDismissRequest = { showAddAssignmentDialog = false },
+      title = { Text("إضافة واجب / تكليف جديد 📝", fontWeight = FontWeight.Bold) },
+      text = {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+          ExposedDropdownMenuBox(
+            expanded = modExpanded,
+            onExpandedChange = { modExpanded = !modExpanded }
+          ) {
+            OutlinedTextField(
+              value = selectedModName,
+              onValueChange = {},
+              readOnly = true,
+              label = { Text("المقياس") },
+              trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = modExpanded) },
+              modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable, true)
+            )
+            ExposedDropdownMenu(
+              expanded = modExpanded,
+              onDismissRequest = { modExpanded = false }
+            ) {
+              modules.forEach { mod ->
+                DropdownMenuItem(
+                  text = { Text(mod.name) },
+                  onClick = {
+                    selectedModName = mod.name
+                    modExpanded = false
+                  }
+                )
+              }
+            }
+          }
+
+          OutlinedTextField(
+            value = title,
+            onValueChange = { title = it },
+            label = { Text("عنوان التكليف أو البحث") },
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier.fillMaxWidth()
+          )
+
+          OutlinedTextField(
+            value = dueDate,
+            onValueChange = { dueDate = it },
+            label = { Text("تاريخ أو آخر أجل للتسليم") },
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier.fillMaxWidth()
+          )
+
+          OutlinedTextField(
+            value = desc,
+            onValueChange = { desc = it },
+            label = { Text("تفاصيل ومحاور الواجب") },
+            minLines = 2,
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier.fillMaxWidth()
+          )
+        }
+      },
+      confirmButton = {
+        Button(
+          onClick = {
+            if (title.isNotBlank()) {
+              viewModel.addAssignment(
+                title = title.trim(),
+                courseName = selectedModName,
+                dueDate = dueDate.trim(),
+                description = desc.ifBlank { "تكليف دراسي موجه" }
+              )
+              showAddAssignmentDialog = false
+            }
+          },
+          shape = RoundedCornerShape(10.dp)
+        ) {
+          Text("نشر الواجب")
+        }
+      },
+      dismissButton = {
+        TextButton(onClick = { showAddAssignmentDialog = false }) { Text("إلغاء") }
+      }
+    )
+  }
+
+  // Dialog: Report Issue
+  if (reportDialogItem != null) {
+    val asgn = reportDialogItem!!
+    AlertDialog(
+      onDismissRequest = { reportDialogItem = null },
+      title = { Text("تبليغ عن خطأ في التكليف 🚩", fontWeight = FontWeight.Bold) },
+      text = {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+          Text("الواجب: ${asgn.title}", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+          Text("أدخل الملاحظة لإشعار المشرف وممثل الفوج:")
+          OutlinedTextField(
+            value = reportReasonText,
+            onValueChange = { reportReasonText = it },
+            label = { Text("الملاحظة / الخطأ في تاريخ التسليم أو التفاصيل") },
+            minLines = 3,
+            modifier = Modifier.fillMaxWidth()
+          )
+        }
+      },
+      confirmButton = {
+        Button(
+          onClick = {
+            if (reportReasonText.isNotBlank()) {
+              viewModel.reportIssue("واجب وتكليف", asgn.title, reportReasonText.trim())
+              reportSuccessMessage = "تم إرسال تبليغك للممثل والمشرف لمراجعة التكليف 🚩"
+              reportReasonText = ""
+              reportDialogItem = null
+            }
+          },
+          shape = RoundedCornerShape(10.dp)
+        ) {
+          Text("إرسال التبليغ")
+        }
+      },
+      dismissButton = {
+        TextButton(onClick = { reportDialogItem = null }) { Text("إلغاء") }
+      }
+    )
+  }
 
   val completedCount = assignments.count { it.isCompleted }
 
@@ -61,11 +201,11 @@ fun AssignmentsScreen(
           ) {
             Column {
               Text(
-                text = "الواجبات والمهام البيداغوجية",
+                text = "الواجبات والتكليفات الدراسية",
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black)
               )
               Text(
-                text = "أعمال موجهة، بحوث، وتقارير عملية",
+                text = "أعمال موجهة، بحوث، وتقارير",
                 style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onPrimaryContainer)
               )
             }
@@ -96,18 +236,50 @@ fun AssignmentsScreen(
           )
 
           Text(
-            text = "تم إنجاز $completedCount من أصل ${assignments.size} واجبات دراسية",
+            text = "تم إنجاز $completedCount من أصل ${assignments.size} تكليفات",
             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
           )
         }
       }
     }
 
+    if (reportSuccessMessage != null) {
+      item {
+        Card(
+          shape = RoundedCornerShape(12.dp),
+          colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+        ) {
+          Text(
+            text = reportSuccessMessage ?: "",
+            modifier = Modifier.padding(12.dp),
+            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold)
+          )
+        }
+      }
+    }
+
     item {
-      Text(
-        text = "قائمة الواجبات المطلوبة",
-        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-      )
+      Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+      ) {
+        Text(
+          text = "قائمة الواجبات المطلوبة",
+          style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+        )
+        if (isSupervisor) {
+          Button(
+            onClick = { showAddAssignmentDialog = true },
+            shape = RoundedCornerShape(8.dp),
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+          ) {
+            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+            Spacer(modifier = Modifier.width(4.dp))
+            Text("+ واجب جديد", fontSize = 12.sp)
+          }
+        }
+      }
     }
 
     if (assignments.isEmpty()) {
@@ -143,7 +315,8 @@ fun AssignmentsScreen(
         AssignmentCardItem(
           assignment = assignment,
           moduleName = mod?.name ?: "مقياس دراسي",
-          onToggle = { viewModel.toggleAssignment(assignment) }
+          onToggle = { viewModel.toggleAssignment(assignment) },
+          onReport = { reportDialogItem = assignment }
         )
       }
     }
@@ -154,7 +327,8 @@ fun AssignmentsScreen(
 fun AssignmentCardItem(
   assignment: Assignment,
   moduleName: String,
-  onToggle: () -> Unit
+  onToggle: () -> Unit,
+  onReport: () -> Unit = {}
 ) {
   Card(
     shape = RoundedCornerShape(18.dp),
@@ -195,13 +369,18 @@ fun AssignmentCardItem(
               fontWeight = FontWeight.Bold
             )
           )
-          Text(
-            text = "آخر أجل: ${assignment.dueDate}",
-            style = MaterialTheme.typography.labelSmall.copy(
-              color = if (assignment.isCompleted) MaterialTheme.colorScheme.onSurfaceVariant else Color(0xFFEF4444),
-              fontWeight = FontWeight.Bold
+          Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+              text = "آخر أجل: ${assignment.dueDate}",
+              style = MaterialTheme.typography.labelSmall.copy(
+                color = if (assignment.isCompleted) MaterialTheme.colorScheme.onSurfaceVariant else Color(0xFFEF4444),
+                fontWeight = FontWeight.Bold
+              )
             )
-          )
+            IconButton(onClick = onReport, modifier = Modifier.size(24.dp)) {
+              Icon(Icons.Default.Flag, contentDescription = "تبليغ", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(15.dp))
+            }
+          }
         }
 
         Text(

@@ -17,17 +17,28 @@ object SupabaseClientProvider {
   private const val TAG = "SupabaseClientProvider"
 
   val client: SupabaseClient by lazy {
-    val supabaseUrl = try {
+    val defaultUrl = "https://ntdzvujhujnbazaqzuvo.supabase.co"
+    val defaultKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im50ZHp2dWpodWpuYmF6YXF6dXZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcyNTk0NzQsImV4cCI6MjEwMjgzNTQ3NH0.MD_tGI24lHf1RSrt6zhSru7E4VfmZP_VVASYDV8b-1Y"
+
+    val rawUrl = try {
       BuildConfig::class.java.getField("SUPABASE_URL").get(null) as? String ?: ""
     } catch (_: Exception) {
       ""
-    }.ifEmpty { "https://ntdzvujhujnbazaqzuvo.supabase.co" }
+    }.trim()
 
-    val supabaseKey = try {
+    val supabaseUrl = if (rawUrl.startsWith("http://", ignoreCase = true) || rawUrl.startsWith("https://", ignoreCase = true)) {
+      if (rawUrl.contains(".")) rawUrl else defaultUrl
+    } else {
+      defaultUrl
+    }
+
+    val rawKey = try {
       BuildConfig::class.java.getField("SUPABASE_ANON_KEY").get(null) as? String ?: ""
     } catch (_: Exception) {
       ""
-    }.ifEmpty { "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im50ZHp2dWpodWpuYmF6YXF6dXZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcyNTk0NzQsImV4cCI6MjEwMjgzNTQ3NH0.MD_tGI24lHf1RSrt6zhSru7E4VfmZP_VVASYDV8b-1Y" }
+    }.trim()
+
+    val supabaseKey = if (rawKey.length > 25) rawKey else defaultKey
 
     createSupabaseClient(
       supabaseUrl = supabaseUrl,

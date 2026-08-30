@@ -1023,6 +1023,66 @@ class TalibViewModel(application: Application) : AndroidViewModel(application) {
     }
   }
 
+  fun addAssignment(
+    title: String,
+    courseName: String,
+    dueDate: String,
+    description: String,
+    visibilityScope: String = "تخصص كامل",
+    targetGroup: String = "الكل"
+  ) {
+    viewModelScope.launch(Dispatchers.IO) {
+      val foundMod = allModules.value.find { it.name == courseName }
+      repository.insertAssignment(
+        Assignment(
+          moduleId = foundMod?.id ?: (_selectedModule.value?.id ?: 1L),
+          title = title,
+          dueDate = dueDate,
+          description = description,
+          visibilityScope = visibilityScope,
+          targetGroup = targetGroup
+        )
+      )
+    }
+  }
+
+  fun deleteAssignment(assignment: Assignment) {
+    viewModelScope.launch(Dispatchers.IO) {
+      repository.deleteAssignment(assignment)
+    }
+  }
+
+  fun deleteExam(exam: Exam) {
+    viewModelScope.launch(Dispatchers.IO) {
+      repository.deleteExam(exam)
+    }
+  }
+
+  fun addCohortGroup(
+    groupName: String,
+    specialtyId: Long = _selectedSpecialtyId.value,
+    academicYearId: Long = _selectedYearId.value
+  ) {
+    viewModelScope.launch(Dispatchers.IO) {
+      val cohort = CohortGroup(
+        specialtyId = specialtyId,
+        academicYearId = academicYearId,
+        groupName = groupName
+      )
+      repository.insertCohortGroup(cohort)
+    }
+  }
+
+  fun assignStudentToGroup(userId: Long, groupName: String) {
+    viewModelScope.launch(Dispatchers.IO) {
+      val users = repository.allUsers.first()
+      val target = users.find { it.id == userId }
+      if (target != null) {
+        repository.updateUser(target.copy(groupNumber = groupName))
+      }
+    }
+  }
+
   fun deleteAnnouncement(announcement: Announcement) {
     viewModelScope.launch(Dispatchers.IO) {
       repository.deleteAnnouncement(announcement)
@@ -1035,21 +1095,21 @@ enum class ScreenRoute(val titleAr: String) {
   HOME("الرئيسية"),
   COURSES("المقررات"),
   LECTURES("المحاضرات والملفات"),
-  MY_FILES("ملفاتي وملاحظاتي"),
+  MY_FILES("ملفاتي"),
   OFFLINE_CACHE("المحتوى المحفوظ"),
   ASSIGNMENTS("الواجبات"),
-  SCHEDULE("الجدول الدراسي"),
-  EXAMS("الامتحانات"),
-  GRADES("العلامات والمعدل"),
-  GROUP("الفوج والزملاء"),
+  SCHEDULE("الجدول"),
+  EXAMS("الاختبارات"),
+  GRADES("حاسبة الطالب"),
+  GROUP("الفوج"),
   ANNOUNCEMENTS("الإعلانات"),
-  PROFILE("حسابي والمسار الأكاديمي"),
-  ADMIN("لوحة الإدارة والرتب"),
-  LIBRARY("المكتبة والمراجع العامة"),
+  PROFILE("حسابي"),
+  ADMIN("لوحة الإشراف"),
+  LIBRARY("المكتبة العامة"),
   ACADEMIC_CALENDAR("التقويم الأكاديمي"),
-  ATTENDANCE("الحضور والغيابات"),
-  REPORT_ISSUE("تبليغ عن مشكلة"),
-  NOTIFICATIONS_CENTER("مركز الإشعارات والتنبيهات"),
-  POLLS("استطلاعات الرأي والتصويت"),
-  ONBOARDING("التهيئة واختيار المسار الأكاديمي")
+  ATTENDANCE("الغيابات"),
+  REPORT_ISSUE("تقديم تبليغ"),
+  NOTIFICATIONS_CENTER("مركز الإشعارات"),
+  POLLS("استطلاعات الرأي"),
+  ONBOARDING("بوابة التسجيل")
 }

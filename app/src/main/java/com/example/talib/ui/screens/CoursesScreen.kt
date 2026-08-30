@@ -41,13 +41,64 @@ fun CoursesScreen(
   val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
 
   var specialtyExpanded by remember { mutableStateOf(false) }
+  var selectedSemesterFilter by remember { mutableStateOf("الكل") }
+  var reportDialogItem by remember { mutableStateOf<ModuleCourse?>(null) }
+  var reportReasonText by remember { mutableStateOf("") }
+  var reportSentMessage by remember { mutableStateOf<String?>(null) }
+
+  // Report Issue Dialog
+  if (reportDialogItem != null) {
+    val mod = reportDialogItem!!
+    AlertDialog(
+      onDismissRequest = { reportDialogItem = null },
+      title = { Text("تقديم تبليغ عن مقياس 🚩", fontWeight = FontWeight.Bold) },
+      text = {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+          Text("المقياس: ${mod.name}", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+          Text("أدخل تفاصيل الخطأ أو الملاحظة لإرسالها مباشرة لمشرف التخصص وممثل الفوج:")
+          OutlinedTextField(
+            value = reportReasonText,
+            onValueChange = { reportReasonText = it },
+            label = { Text("تفاصيل الملاحظة / التبليغ") },
+            minLines = 3,
+            modifier = Modifier.fillMaxWidth()
+          )
+        }
+      },
+      confirmButton = {
+        Button(
+          onClick = {
+            if (reportReasonText.isNotBlank()) {
+              viewModel.reportIssue("مقياس", mod.name, reportReasonText.trim())
+              reportSentMessage = "تم إرسال تبليغك بنجاح للمشرفين للمراجعة والتصحيح 🚩"
+              reportReasonText = ""
+              reportDialogItem = null
+            }
+          },
+          shape = RoundedCornerShape(10.dp)
+        ) {
+          Text("إرسال التبليغ")
+        }
+      },
+      dismissButton = {
+        TextButton(onClick = { reportDialogItem = null }) { Text("إلغاء") }
+      }
+    )
+  }
 
   val currentSpecialty = specialties.find { it.id == selectedSpecialtyId }
 
   val filteredModules = modules.filter {
-    searchQuery.isEmpty() ||
+    val matchesSearch = searchQuery.isEmpty() ||
       it.name.contains(searchQuery, ignoreCase = true) ||
       it.professorName.contains(searchQuery, ignoreCase = true)
+
+    val matchesSemester = when (selectedSemesterFilter) {
+      "السداسي 1" -> it.description.contains("سداسي 1") || it.description.contains("S1") || it.code.contains("1")
+      "السداسي 2" -> it.description.contains("سداسي 2") || it.description.contains("S2") || it.code.contains("2")
+      else -> true
+    }
+    matchesSearch && matchesSemester
   }
 
   LazyColumn(
@@ -114,10 +165,10 @@ fun CoursesScreen(
       }
     }
 
-    // 2. Academic Year Tabs
+    // 2. Academic Year & Semester Tabs
     if (years.isNotEmpty()) {
       item {
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
           Text(
             text = "المستوى الدراسي والسنة:",
             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
@@ -142,6 +193,33 @@ fun CoursesScreen(
               )
             }
           }
+
+          // Semester Filter Chips
+          Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text("السداسي:", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
+            listOf("الكل", "السداسي 1", "السداسي 2").forEach { sem ->
+              FilterChip(
+                selected = selectedSemesterFilter == sem,
+                onClick = { selectedSemesterFilter = sem },
+                label = { Text(sem, fontSize = 11.sp) }
+              )
+            }
+          }
+        }
+      }
+    }
+
+    if (reportSentMessage != null) {
+      item {
+        Card(
+          shape = RoundedCornerShape(12.dp),
+          colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+        ) {
+          Text(
+            text = reportSentMessage ?: "",
+            modifier = Modifier.padding(12.dp),
+            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold)
+          )
         }
       }
     }
@@ -245,6 +323,9 @@ fun CoursesScreen(
           },
           onCacheOffline = {
             viewModel.cacheCourseContentForOffline(module)
+          },
+          onReport = {
+            reportDialogItem = module
           }
         )
       }
@@ -256,7 +337,8 @@ fun CoursesScreen(
 fun ModuleCardItem(
   module: ModuleCourse,
   onOpenLectures: () -> Unit,
-  onCacheOffline: () -> Unit = {}
+  onCacheOffline: () -> Unit = {},
+  onReport: () -> Unit = {}
 ) {
   Card(
     shape = RoundedCornerShape(20.dp),
@@ -329,13 +411,21 @@ fun ModuleCardItem(
           }
         }
 
-        Text(
-          text = module.code,
-          style = MaterialTheme.typography.labelSmall.copy(
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+        Row(
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+          Text(
+            text = module.code,
+            style = MaterialTheme.typography.labelSmall.copy(
+              fontWeight = FontWeight.Bold,
+              color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
           )
-        )
+          IconButton(onClick = onReport, modifier = Modifier.size(28.dp)) {
+            Icon(Icons.Default.Flag, contentDescription = "تبليغ عن خطأ", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(16.dp))
+          }
+        }
       }
 
       Text(

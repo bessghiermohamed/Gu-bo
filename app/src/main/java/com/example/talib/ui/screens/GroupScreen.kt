@@ -8,7 +8,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -29,6 +28,13 @@ fun GroupScreen(
 ) {
   val profile by viewModel.studentProfile.collectAsStateWithLifecycle()
   val modules by viewModel.currentModules.collectAsStateWithLifecycle()
+  val users by viewModel.allUsers.collectAsStateWithLifecycle()
+
+  val currentGroup = profile?.groupNumber ?: ""
+  val isUnassigned = currentGroup.isBlank() || currentGroup == "بلا فوج"
+
+  val groupColleagues = users.filter { !isUnassigned && it.groupNumber == currentGroup }
+  val groupRep = users.find { !isUnassigned && it.groupNumber == currentGroup && it.role == "REPRESENTATIVE" }
 
   LazyColumn(
     modifier = Modifier
@@ -41,7 +47,9 @@ fun GroupScreen(
     item {
       Card(
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)),
+        colors = CardDefaults.cardColors(
+          containerColor = if (isUnassigned) Color(0xFFFFFBEB) else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
+        ),
         modifier = Modifier.fillMaxWidth()
       ) {
         Column(
@@ -57,7 +65,7 @@ fun GroupScreen(
           ) {
             Column {
               Text(
-                text = "${profile?.groupNumber ?: "الفوج 03"} • ${profile?.subGroup ?: "الفوج الفرعي B"}",
+                text = if (isUnassigned) "بانتظار الإلحاق بالفوج 🎓" else currentGroup,
                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Black)
               )
               Text(
@@ -70,7 +78,7 @@ fun GroupScreen(
               modifier = Modifier
                 .size(48.dp)
                 .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.primary),
+                .background(if (isUnassigned) Color(0xFFD97706) else MaterialTheme.colorScheme.primary),
               contentAlignment = Alignment.Center
             ) {
               Icon(
@@ -78,6 +86,20 @@ fun GroupScreen(
                 contentDescription = null,
                 tint = Color.White,
                 modifier = Modifier.size(26.dp)
+              )
+            }
+          }
+
+          if (isUnassigned) {
+            Surface(
+              shape = RoundedCornerShape(10.dp),
+              color = Color(0xFFFEF3C7),
+              modifier = Modifier.fillMaxWidth()
+            ) {
+              Text(
+                text = "📌 أنت مسجل بحالة (بدون فوج) على مستوى التخصص. سيتم إلحاقك بفوجك الدراسي من قِبل ممثل الدفعة أو مشرف التخصص عبر لوحة الإدارة.",
+                modifier = Modifier.padding(10.dp),
+                style = MaterialTheme.typography.bodySmall.copy(color = Color(0xFF92400E), fontWeight = FontWeight.SemiBold)
               )
             }
           }
@@ -90,11 +112,17 @@ fun GroupScreen(
           ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
               Text("المسار الأكاديمي", style = MaterialTheme.typography.bodySmall)
-              Text(profile?.profileTrack ?: profile?.specialtyName ?: "غير محدد", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
+              Text(profile?.profileTrack ?: profile?.specialtyName ?: "تخصص عام", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
             }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
               Text("حالة الفوج", style = MaterialTheme.typography.bodySmall)
-              Text(profile?.groupNumber ?: "الفوج 01", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary))
+              Text(
+                text = if (isUnassigned) "قيد التوزيع" else "معتمد",
+                style = MaterialTheme.typography.titleSmall.copy(
+                  fontWeight = FontWeight.Bold,
+                  color = if (isUnassigned) Color(0xFFD97706) else MaterialTheme.colorScheme.primary
+                )
+              )
             }
           }
         }
@@ -104,7 +132,7 @@ fun GroupScreen(
     // 2. Class Representative Card
     item {
       Text(
-        text = "مندوب الدفعة واللجنة البيداغوجية",
+        text = "مندوب الفوج واللجنة البيداغوجية",
         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
       )
     }
@@ -139,11 +167,11 @@ fun GroupScreen(
 
           Column(modifier = Modifier.weight(1f)) {
             Text(
-              text = "مندوب الفوج (${profile?.groupNumber ?: "الفوج الدراسي"})",
+              text = groupRep?.fullName ?: "ممثل الفوج والمكتب البيداغوجي",
               style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
             )
             Text(
-              text = "يتم تعيين المندوب ومسؤولي الفوج عبر إدارة الكلية أو منصة التنسيق.",
+              text = if (groupRep != null) "${groupRep.email} • ممثل معتمد" else "يتم تعيين الممثلين وتحديد نطاقهم من لوحة الإدارة.",
               style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
             )
           }
@@ -151,10 +179,74 @@ fun GroupScreen(
       }
     }
 
-    // 3. Faculty / Professors Directory
+    // 3. Group Colleagues Section (قائمة الزملاء في الفوج)
+    if (!isUnassigned) {
+      item {
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.SpaceBetween,
+          verticalAlignment = Alignment.CenterVertically
+        ) {
+          Text(
+            text = "الزملاء المسجلين في $currentGroup",
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+          )
+          Text(
+            text = "${groupColleagues.size} زميل",
+            style = MaterialTheme.typography.labelSmall.copy(color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+          )
+        }
+      }
+
+      if (groupColleagues.isEmpty()) {
+        item {
+          Card(
+            shape = RoundedCornerShape(14.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+            modifier = Modifier.fillMaxWidth()
+          ) {
+            Text(
+              text = "لا يوجد زملاء مضافون في هذا الفوج حتى الآن.",
+              modifier = Modifier.padding(16.dp),
+              style = MaterialTheme.typography.bodySmall
+            )
+          }
+        }
+      } else {
+        items(groupColleagues) { colleague ->
+          Card(
+            shape = RoundedCornerShape(14.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            modifier = Modifier.fillMaxWidth()
+          ) {
+            Row(
+              modifier = Modifier.padding(12.dp),
+              verticalAlignment = Alignment.CenterVertically,
+              horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+              Box(
+                modifier = Modifier
+                  .size(34.dp)
+                  .clip(CircleShape)
+                  .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
+                contentAlignment = Alignment.Center
+              ) {
+                Icon(Icons.Default.Person, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+              }
+              Column {
+                Text(colleague.fullName, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text(colleague.email, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // 4. Faculty / Professors Directory
     item {
       Text(
-        text = "هيئة التدريس وتأطير الفوج",
+        text = "هيئة التدريس وتأطير المقاييس",
         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
       )
     }
@@ -182,10 +274,6 @@ fun GroupScreen(
             Text(
               text = "لا توجد معلومات هيئة تدريس مسجلة حالياً",
               style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
-            )
-            Text(
-              text = "ستظهر قائمة الأساتذة فور إضافة المقاييس من لوحة الإدارة.",
-              style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
             )
           }
         }
@@ -229,12 +317,6 @@ fun GroupScreen(
                 text = "مقياس: ${mod.name}",
                 style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
               )
-              if (mod.professorEmail.isNotEmpty()) {
-                Text(
-                  text = "البريد: ${mod.professorEmail}",
-                  style = MaterialTheme.typography.labelSmall.copy(color = MaterialTheme.colorScheme.primary)
-                )
-              }
             }
           }
         }

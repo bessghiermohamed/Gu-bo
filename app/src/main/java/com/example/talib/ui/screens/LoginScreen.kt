@@ -25,15 +25,13 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.talib.ui.viewmodel.ScreenRoute
+import com.example.talib.data.local.StudentProfile
 import com.example.talib.ui.viewmodel.TalibViewModel
+import kotlin.random.Random
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -42,32 +40,15 @@ fun LoginScreen(
   onLoginSuccess: () -> Unit
 ) {
   val focusManager = LocalFocusManager.current
-  val authState by viewModel.authStatusMessage.collectAsStateWithLifecycle()
-  val isAuthLoading by viewModel.isAuthLoading.collectAsStateWithLifecycle()
   val currentUserProfile by viewModel.studentProfile.collectAsStateWithLifecycle()
+  val isAuthLoading by viewModel.isAuthLoading.collectAsStateWithLifecycle()
+  val purplePrimary = MaterialTheme.colorScheme.primary
 
-  var isSignUpMode by remember { mutableStateOf(false) }
-
-  // Form Fields
+  // Form Fields for Alternative Login: Name + Last Name + Optional Email
+  var firstName by remember { mutableStateOf("") }
+  var lastName by remember { mutableStateOf("") }
   var email by remember { mutableStateOf("") }
-  var password by remember { mutableStateOf("") }
-  var confirmPassword by remember { mutableStateOf("") }
-  var fullName by remember { mutableStateOf("") }
-  var studentId by remember { mutableStateOf("") }
-  var selectedGroup by remember { mutableStateOf("الفوج 03") }
-  var selectedSpecialty by remember { mutableStateOf("اللغة والأدب العربي") }
-  var selectedYear by remember { mutableStateOf("السنة الثانية (L2)") }
-
-  var passwordVisible by remember { mutableStateOf(false) }
   var validationError by remember { mutableStateOf<String?>(null) }
-
-  // Quick Preset Accounts for Easy Login/Testing
-  val presetAccounts = listOf(
-    Triple("👑 المالك (Super Admin)", "admin@univ.dz", "OWNER"),
-    Triple("🏛️ مسؤول تخصص (الأدب)", "specialty.admin@univ.dz", "SPECIALTY_ADMIN"),
-    Triple("🎓 ممثل الفوج 03", "delegate.g3@univ.dz", "REPRESENTATIVE"),
-    Triple("👤 طالب جامعي", "student@univ.dz", "STUDENT")
-  )
 
   Scaffold(
     modifier = Modifier
@@ -84,17 +65,17 @@ fun LoginScreen(
       horizontalAlignment = Alignment.CenterHorizontally,
       verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-      Spacer(modifier = Modifier.height(12.dp))
+      Spacer(modifier = Modifier.height(16.dp))
 
       // Logo and App Brand Header
       Box(
         modifier = Modifier
-          .size(80.dp)
+          .size(84.dp)
           .clip(CircleShape)
           .background(
             Brush.linearGradient(
               colors = listOf(
-                MaterialTheme.colorScheme.primary,
+                purplePrimary,
                 MaterialTheme.colorScheme.secondary
               )
             )
@@ -103,22 +84,22 @@ fun LoginScreen(
       ) {
         Icon(
           imageVector = Icons.Default.School,
-          contentDescription = "شعار التطبيق",
+          contentDescription = "شعار طالب",
           tint = Color.White,
-          modifier = Modifier.size(44.dp)
+          modifier = Modifier.size(48.dp)
         )
       }
 
       Text(
-        text = "طالب | Talib",
+        text = "طالب | Tâlib",
         style = MaterialTheme.typography.headlineMedium.copy(
           fontWeight = FontWeight.Black,
-          color = MaterialTheme.colorScheme.primary
+          color = purplePrimary
         )
       )
 
       Text(
-        text = if (isSignUpMode) "إنشاء حساب جامعي جديد بالمنظومة" else "بوابة تسجيل الدخول الأكاديمية",
+        text = "بوابة تسجيل الدخول واستعادة الحساب الأكاديمي",
         style = MaterialTheme.typography.bodyMedium.copy(
           color = MaterialTheme.colorScheme.onSurfaceVariant,
           fontWeight = FontWeight.SemiBold
@@ -126,112 +107,64 @@ fun LoginScreen(
         textAlign = TextAlign.Center
       )
 
-      // Tab switcher between Sign In and Sign Up
-      Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
-        modifier = Modifier.fillMaxWidth()
-      ) {
-        Row(
-          modifier = Modifier
-            .fillMaxWidth()
-            .padding(4.dp),
-          horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-          Button(
-            onClick = {
-              isSignUpMode = false
-              validationError = null
-            },
-            colors = ButtonDefaults.buttonColors(
-              containerColor = if (!isSignUpMode) MaterialTheme.colorScheme.surface else Color.Transparent,
-              contentColor = if (!isSignUpMode) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-            ),
-            elevation = if (!isSignUpMode) ButtonDefaults.buttonElevation(defaultElevation = 2.dp) else ButtonDefaults.buttonElevation(0.dp),
-            shape = RoundedCornerShape(12.dp),
-            modifier = Modifier.weight(1f)
-          ) {
-            Text("تسجيل الدخول", fontWeight = FontWeight.Bold)
-          }
-
-          Button(
-            onClick = {
-              isSignUpMode = true
-              validationError = null
-            },
-            colors = ButtonDefaults.buttonColors(
-              containerColor = if (isSignUpMode) MaterialTheme.colorScheme.surface else Color.Transparent,
-              contentColor = if (isSignUpMode) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-            ),
-            elevation = if (isSignUpMode) ButtonDefaults.buttonElevation(defaultElevation = 2.dp) else ButtonDefaults.buttonElevation(0.dp),
-            shape = RoundedCornerShape(12.dp),
-            modifier = Modifier.weight(1f)
-          ) {
-            Text("حساب جديد", fontWeight = FontWeight.Bold)
-          }
-        }
-      }
-
-      // Quick Role / Demo Selector for fast access
-      if (!isSignUpMode) {
+      // Auto-remember device card
+      val activeProfile = currentUserProfile
+      if (activeProfile != null && activeProfile.isConfigured && activeProfile.fullName.isNotBlank()) {
         Card(
-          shape = RoundedCornerShape(16.dp),
-          colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-          elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+          shape = RoundedCornerShape(18.dp),
+          colors = CardDefaults.cardColors(containerColor = purplePrimary.copy(alpha = 0.1f)),
+          border = androidx.compose.foundation.BorderStroke(1.dp, purplePrimary.copy(alpha = 0.3f)),
           modifier = Modifier.fillMaxWidth()
         ) {
           Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
           ) {
-            Text(
-              text = "دخول سريع برتبة محددة:",
-              style = MaterialTheme.typography.labelSmall.copy(
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-              )
-            )
-
             Row(
-              modifier = Modifier.fillMaxWidth(),
-              horizontalArrangement = Arrangement.spacedBy(6.dp)
+              verticalAlignment = Alignment.CenterVertically,
+              horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-              presetAccounts.forEach { (label, presetEmail, role) ->
-                Surface(
-                  shape = RoundedCornerShape(8.dp),
-                  color = if (email == presetEmail) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-                  modifier = Modifier
-                    .weight(1f)
-                    .clickable {
-                      email = presetEmail
-                      password = "password123"
-                    }
-                ) {
-                  Text(
-                    text = label.split(" ")[0] + " " + label.split(" ")[1],
-                    style = MaterialTheme.typography.labelSmall.copy(
-                      fontSize = 10.sp,
-                      fontWeight = FontWeight.Bold,
-                      color = if (email == presetEmail) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-                    ),
-                    modifier = Modifier.padding(vertical = 6.dp, horizontal = 2.dp),
-                    textAlign = TextAlign.Center
-                  )
-                }
+              Icon(Icons.Default.PhoneAndroid, contentDescription = null, tint = purplePrimary)
+              Column {
+                Text("تم التعرف على جهازك تلقائياً", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
+                Text("الحساب النشط: ${activeProfile.fullName}", style = MaterialTheme.typography.bodySmall)
               }
+            }
+            Button(
+              onClick = onLoginSuccess,
+              shape = RoundedCornerShape(12.dp),
+              colors = ButtonDefaults.buttonColors(containerColor = purplePrimary),
+              modifier = Modifier.fillMaxWidth()
+            ) {
+              Text("المتابعة مباشرة كـ (${activeProfile.fullName}) 🎓", fontWeight = FontWeight.Bold)
             }
           }
         }
       }
 
-      // Status/Error banner
-      if (validationError != null || authState != null) {
-        Surface(
+      // Information notice: No passwords in Talib
+      Card(
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)),
+        modifier = Modifier.fillMaxWidth()
+      ) {
+        Row(
+          modifier = Modifier.padding(14.dp),
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+          Icon(Icons.Default.Security, contentDescription = null, tint = purplePrimary)
+          Text(
+            text = "نظام طالب لا يعتمد على كلمات المرور إطلاقاً. يتم الدخول بتذكر الجهاز، أو بإدخال الاسم واللقب والبريد في حال تغيير الجهاز.",
+            style = MaterialTheme.typography.bodySmall
+          )
+        }
+      }
+
+      if (validationError != null) {
+        Card(
           shape = RoundedCornerShape(12.dp),
-          color = if (validationError != null || authState?.startsWith("خطأ") == true)
-            MaterialTheme.colorScheme.errorContainer
-          else
-            MaterialTheme.colorScheme.primaryContainer,
+          colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
           modifier = Modifier.fillMaxWidth()
         ) {
           Row(
@@ -239,32 +172,17 @@ fun LoginScreen(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
           ) {
-            Icon(
-              imageVector = if (validationError != null || authState?.startsWith("خطأ") == true)
-                Icons.Default.ErrorOutline
-              else
-                Icons.Default.CheckCircleOutline,
-              contentDescription = null,
-              tint = if (validationError != null || authState?.startsWith("خطأ") == true)
-                MaterialTheme.colorScheme.error
-              else
-                MaterialTheme.colorScheme.primary
-            )
+            Icon(Icons.Default.ErrorOutline, contentDescription = null, tint = MaterialTheme.colorScheme.error)
             Text(
-              text = validationError ?: authState ?: "",
-              style = MaterialTheme.typography.bodySmall.copy(
-                fontWeight = FontWeight.Bold,
-                color = if (validationError != null || authState?.startsWith("خطأ") == true)
-                  MaterialTheme.colorScheme.onErrorContainer
-                else
-                  MaterialTheme.colorScheme.onPrimaryContainer
-              )
+              text = validationError ?: "",
+              color = MaterialTheme.colorScheme.onErrorContainer,
+              style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold)
             )
           }
         }
       }
 
-      // Input Form Fields
+      // Input Form Fields (Name + Last Name + Optional Email)
       Card(
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -275,125 +193,66 @@ fun LoginScreen(
           modifier = Modifier.padding(18.dp),
           verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-          if (isSignUpMode) {
-            // Full Name
+          Text(
+            text = "تسجيل الدخول / استعادة الحساب الأكاديمي:",
+            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold, color = purplePrimary)
+          )
+
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+          ) {
             OutlinedTextField(
-              value = fullName,
-              onValueChange = { fullName = it },
-              label = { Text("الاسم واللقب الكامل") },
+              value = firstName,
+              onValueChange = {
+                firstName = it
+                validationError = null
+              },
+              label = { Text("الاسم") },
               leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
               shape = RoundedCornerShape(12.dp),
               singleLine = true,
               keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
               keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
               modifier = Modifier
-                .fillMaxWidth()
-                .testTag("signup_fullname_input")
+                .weight(1f)
+                .testTag("login_firstname_input")
             )
 
-            // Student ID (رقم التسجيل)
             OutlinedTextField(
-              value = studentId,
-              onValueChange = { studentId = it },
-              label = { Text("رقم التسجيل الجامعي") },
-              leadingIcon = { Icon(Icons.Default.Badge, contentDescription = null) },
-              shape = RoundedCornerShape(12.dp),
-              singleLine = true,
-              keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
-              keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
-              modifier = Modifier
-                .fillMaxWidth()
-                .testTag("signup_studentid_input")
-            )
-
-            // Group Number
-            OutlinedTextField(
-              value = selectedGroup,
-              onValueChange = { selectedGroup = it },
-              label = { Text("الفوج (مثال: الفوج 03)") },
-              leadingIcon = { Icon(Icons.Default.Groups, contentDescription = null) },
+              value = lastName,
+              onValueChange = {
+                lastName = it
+                validationError = null
+              },
+              label = { Text("اللقب") },
               shape = RoundedCornerShape(12.dp),
               singleLine = true,
               keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
               keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
               modifier = Modifier
-                .fillMaxWidth()
-                .testTag("signup_group_input")
+                .weight(1f)
+                .testTag("login_lastname_input")
             )
           }
 
-          // Email
           OutlinedTextField(
             value = email,
             onValueChange = {
               email = it
               validationError = null
             },
-            label = { Text("البريد الإلكتروني الجامعي") },
-            placeholder = { Text("student@univ.dz") },
+            label = { Text("البريد الإلكتروني (اختياري)") },
+            placeholder = { Text("student@talib.dz") },
             leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
             shape = RoundedCornerShape(12.dp),
             singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
-            keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
             modifier = Modifier
               .fillMaxWidth()
               .testTag("login_email_input")
           )
-
-          // Password
-          OutlinedTextField(
-            value = password,
-            onValueChange = {
-              password = it
-              validationError = null
-            },
-            label = { Text("كلمة المرور") },
-            leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
-            trailingIcon = {
-              IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                Icon(
-                  imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                  contentDescription = if (passwordVisible) "إخفاء كلمة المرور" else "إظهار كلمة المرور"
-                )
-              }
-            },
-            visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-            shape = RoundedCornerShape(12.dp),
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(
-              keyboardType = KeyboardType.Password,
-              imeAction = if (isSignUpMode) ImeAction.Next else ImeAction.Done
-            ),
-            keyboardActions = KeyboardActions(
-              onNext = { focusManager.moveFocus(FocusDirection.Down) },
-              onDone = { focusManager.clearFocus() }
-            ),
-            modifier = Modifier
-              .fillMaxWidth()
-              .testTag("login_password_input")
-          )
-
-          if (isSignUpMode) {
-            // Confirm Password
-            OutlinedTextField(
-              value = confirmPassword,
-              onValueChange = {
-                confirmPassword = it
-                validationError = null
-              },
-              label = { Text("تأكيد كلمة المرور") },
-              leadingIcon = { Icon(Icons.Default.LockReset, contentDescription = null) },
-              visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-              shape = RoundedCornerShape(12.dp),
-              singleLine = true,
-              keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
-              keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
-              modifier = Modifier
-                .fillMaxWidth()
-                .testTag("signup_confirm_password_input")
-            )
-          }
 
           Spacer(modifier = Modifier.height(4.dp))
 
@@ -401,73 +260,46 @@ fun LoginScreen(
           Button(
             onClick = {
               focusManager.clearFocus()
-              if (email.isBlank()) {
-                validationError = "يرجى كتابة البريد الإلكتروني"
-                return@Button
-              }
-              if (password.isBlank()) {
-                validationError = "يرجى كتابة كلمة المرور"
+              if (firstName.isBlank() || lastName.isBlank()) {
+                validationError = "يرجى كتابة الاسم واللقب للمتابعة"
                 return@Button
               }
 
-              if (isSignUpMode) {
-                if (fullName.isBlank()) {
-                  validationError = "يرجى إدخال اسمك ولقبك"
-                  return@Button
-                }
-                if (password != confirmPassword) {
-                  validationError = "كلمتا المرور غير متطابقتين"
-                  return@Button
-                }
-                viewModel.signUpUser(
-                  fullName = fullName,
-                  email = email,
-                  password = password,
-                  studentId = studentId.ifBlank { "20263108" },
-                  groupNumber = selectedGroup.ifBlank { "الفوج 03" },
-                  onSuccess = onLoginSuccess
+              val full = "${firstName.trim()} ${lastName.trim()}"
+              val existing = currentUserProfile ?: StudentProfile(studentId = "STD-${(100000..999999).random()}")
+              viewModel.updateProfile(
+                existing.copy(
+                  fullName = full,
+                  email = if (email.isNotBlank()) email.trim() else existing.email.ifBlank { "student@talib.dz" },
+                  isConfigured = true
                 )
-              } else {
-                viewModel.loginUser(
-                  email = email,
-                  password = password,
-                  onSuccess = onLoginSuccess
-                )
-              }
+              )
+              onLoginSuccess()
             },
             enabled = !isAuthLoading,
             shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = purplePrimary),
             modifier = Modifier
               .fillMaxWidth()
               .height(50.dp)
               .testTag("auth_submit_btn")
           ) {
-            if (isAuthLoading) {
-              CircularProgressIndicator(
-                color = Color.White,
-                modifier = Modifier.size(22.dp),
-                strokeWidth = 2.5.dp
-              )
-              Spacer(modifier = Modifier.width(10.dp))
-              Text("جاري المعالجة...")
-            } else {
-              Icon(
-                imageVector = if (isSignUpMode) Icons.Default.PersonAdd else Icons.Default.Login,
-                contentDescription = null,
-                modifier = Modifier.size(20.dp)
-              )
-              Spacer(modifier = Modifier.width(8.dp))
-              Text(
-                text = if (isSignUpMode) "إنشاء الحساب والدخول" else "تسجيل الدخول",
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp
-              )
-            }
+            Icon(
+              imageVector = Icons.Default.Login,
+              contentDescription = null,
+              modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+              text = "دخول ومطابقة الحساب 🎓",
+              fontWeight = FontWeight.Bold,
+              fontSize = 16.sp
+            )
           }
         }
       }
 
-      // Guest / Offline Fast Access Option
+      // Guest access
       TextButton(
         onClick = {
           viewModel.continueAsGuest(onSuccess = onLoginSuccess)
@@ -480,7 +312,7 @@ fun LoginScreen(
         ) {
           Icon(Icons.Default.DirectionsWalk, contentDescription = null, modifier = Modifier.size(18.dp))
           Text(
-            text = "المتابعة كطالب ضيف (وضع العمل دون اتصال)",
+            text = "المتابعة كطالب ضيف (استعراض دون اتصال)",
             style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold)
           )
         }

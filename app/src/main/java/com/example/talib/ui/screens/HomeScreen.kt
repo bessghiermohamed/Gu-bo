@@ -209,7 +209,7 @@ fun HomeScreen(
           horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
           GridActionCard(
-            title = "المقررات الدراسية",
+            title = "المقررات",
             icon = Icons.Default.Book,
             badgeText = "${modules.size} مقاييس",
             isDarkMode = isDarkMode,
@@ -219,7 +219,7 @@ fun HomeScreen(
           )
 
           GridActionCard(
-            title = "المحاضرات والـ PDF",
+            title = "المحاضرات",
             icon = Icons.Default.Description,
             badgeText = "قراءة وتحميل",
             isDarkMode = isDarkMode,
@@ -229,13 +229,13 @@ fun HomeScreen(
           )
         }
 
-        // Row 2: الجدول الأسبوعي + الامتحانات
+        // Row 2: الجدول + الاختبارات
         Row(
           modifier = Modifier.fillMaxWidth(),
           horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
           GridActionCard(
-            title = "الجدول الأسبوعي",
+            title = "الجدول",
             icon = Icons.Default.CalendarMonth,
             badgeText = "التوقيت والقاعات",
             isDarkMode = isDarkMode,
@@ -245,7 +245,7 @@ fun HomeScreen(
           )
 
           GridActionCard(
-            title = "برنامج الامتحانات",
+            title = "الاختبارات",
             icon = Icons.Default.Science,
             badgeText = "${exams.size} اختبارات",
             isDarkMode = isDarkMode,
@@ -255,13 +255,13 @@ fun HomeScreen(
           )
         }
 
-        // Row 3: الواجبات الدراسية + العلامات والمعدل
+        // Row 3: الواجبات + حاسبة الطالب
         Row(
           modifier = Modifier.fillMaxWidth(),
           horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
           GridActionCard(
-            title = "الواجبات والمهام",
+            title = "الواجبات",
             icon = Icons.Default.EditNote,
             badgeText = "تسليمات ومتابعة",
             isDarkMode = isDarkMode,
@@ -271,7 +271,7 @@ fun HomeScreen(
           )
 
           GridActionCard(
-            title = "العلامات وحساب المعدل",
+            title = "حاسبة الطالب",
             icon = Icons.Default.Equalizer,
             badgeText = if (gpa > 0.0) "$gpa / 20" else "حساب مباشر",
             isDarkMode = isDarkMode,
@@ -281,13 +281,13 @@ fun HomeScreen(
           )
         }
 
-        // Row 4: ملفاتي وملاحظاتي + المحتوى المحفوظ أوفلاين
+        // Row 4: ملفاتي + المحتوى المحفوظ أوفلاين
         Row(
           modifier = Modifier.fillMaxWidth(),
           horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
           GridActionCard(
-            title = "ملفاتي وملاحظاتي",
+            title = "ملفاتي",
             icon = Icons.Default.Folder,
             badgeText = "دفتر الطالب",
             isDarkMode = isDarkMode,
@@ -307,13 +307,13 @@ fun HomeScreen(
           )
         }
 
-        // Row 5: الإعلانات الأكاديمية + الفوج والزملاء
+        // Row 5: الإعلانات + الفوج
         Row(
           modifier = Modifier.fillMaxWidth(),
           horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
           GridActionCard(
-            title = "الإعلانات والتنبيهات",
+            title = "الإعلانات",
             icon = Icons.Default.Campaign,
             badgeText = "${announcements.size} تنبيهات",
             isDarkMode = isDarkMode,
@@ -323,7 +323,7 @@ fun HomeScreen(
           )
 
           GridActionCard(
-            title = "الفوج والزملاء",
+            title = "الفوج",
             icon = Icons.Default.Groups,
             badgeText = profile?.groupNumber ?: "الفوج 03",
             isDarkMode = isDarkMode,
